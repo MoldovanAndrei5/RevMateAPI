@@ -10,7 +10,7 @@ import models
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Car Maintenance Tracker")
-# hello world
+# hello world 2
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
