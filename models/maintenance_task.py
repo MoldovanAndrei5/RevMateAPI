@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-from backend.database import Base
+from database import Base
 
 
 class MaintenanceTask(Base):

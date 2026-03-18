@@ -32,7 +32,7 @@ async def health_check():
     return {"status": "Healthy"}
 
 # -------------------------------
-# Lambda handler (no Mangum)
+# Lambda handler 
 # -------------------------------
 def handler(event, context):
     from starlette.testclient import TestClient

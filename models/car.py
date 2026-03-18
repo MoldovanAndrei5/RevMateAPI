@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
-from backend.database import Base
+from database import Base
 
 
 class Car(Base):
