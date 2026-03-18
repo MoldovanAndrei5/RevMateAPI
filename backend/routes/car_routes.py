@@ -1,10 +1,10 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from schemas.car_schema import CarSchema, CarCreate, CarUpdate
-from models.car import Car
-from database import get_db
-from utils.auth import get_current_user
+from backend.schemas.car_schema import CarSchema, CarCreate, CarUpdate
+from backend.models.car import Car
+from backend.database import get_db
+from backend.utils.auth import get_current_user
 
 router = APIRouter(tags=["Cars"])
 

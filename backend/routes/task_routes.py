@@ -3,12 +3,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from models import Car
-from models.maintenance_task import MaintenanceTask
-from database import get_db
-from models.user import User
-from schemas.task_schema import TaskSchema, TaskCreate, TaskUpdate
-from utils.auth import get_current_user
+from backend.models import Car
+from backend.models.maintenance_task import MaintenanceTask
+from backend.database import get_db
+from backend.schemas.task_schema import TaskSchema, TaskCreate, TaskUpdate
+from backend.utils.auth import get_current_user
 
 router = APIRouter(tags=["Tasks"], dependencies=[Depends(get_current_user)])
 
