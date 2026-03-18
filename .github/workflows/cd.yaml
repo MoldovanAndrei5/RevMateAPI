@@ -50,7 +50,7 @@ jobs:
       - name: Update Lambda code
         run: |
           aws lambda update-function-code \
-            --function-name CarMaintenanceTracker \
-            --zip-file fileb://ServerCarMaintenanceApp/function.zip \
+            --function-name carBackend \
+            --zip-file fileb://backend/function.zip \
             --query 'FunctionArn' \
             --output text
