@@ -43,9 +43,16 @@ def handler(event, context):
     headers = event.get("headers") or {}
     body = event.get("body") or ""
 
+    # Minimal request log
+    print(f"[LAMBDA REQUEST] {method} {path}")
+
+    if query:
+        print(f"[QUERY PARAMS] {query}")
+
     if event.get("isBase64Encoded"):
         import base64
         body = base64.b64decode(body)
+        print("[BODY] Base64 decoded")
 
     client = TestClient(app, raise_server_exceptions=False)
 
@@ -57,13 +64,15 @@ def handler(event, context):
         content=body if body else None,
     )
 
+    # Minimal response log
+    print(f"[LAMBDA RESPONSE] Status: {response.status_code}")
+
     return {
         "statusCode": response.status_code,
         "headers": dict(response.headers),
         "body": response.text,
         "isBase64Encoded": False,
     }
-
 # -------------------------------
 # Local dev
 # -------------------------------
