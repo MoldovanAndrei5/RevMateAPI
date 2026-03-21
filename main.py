@@ -41,6 +41,10 @@ def handler(event, context):
     query = event.get("queryStringParameters") or {}
     headers = event.get("headers") or {}
     body = event.get("body") or ""
+    
+    print(f"[DEBUG] Raw event: {json.dumps(event)}")
+    print(f"[DEBUG] Body type: {type(body)}")
+    print(f"[DEBUG] Body value: {body}")
 
     print(f"[LAMBDA REQUEST] {method} {path}")
 
