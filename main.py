@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 import uvicorn
 from starlette.middleware.cors import CORSMiddleware
+from starlette.testclient import TestClient
+import json
+
 from database import engine
 from routes.car_routes import router as car_router
 from routes.task_routes import router as task_router
@@ -33,24 +36,19 @@ async def health_check():
 
 
 def handler(event, context):
-    from starlette.testclient import TestClient
-
     method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "GET")
     path = event.get("path") or event.get("rawPath", "/")
     query = event.get("queryStringParameters") or {}
     headers = event.get("headers") or {}
     body = event.get("body") or ""
 
-    # Minimal request log
     print(f"[LAMBDA REQUEST] {method} {path}")
 
-    if query:
-        print(f"[QUERY PARAMS] {query}")
-
-    if event.get("isBase64Encoded"):
+    if event.get("isBase64Encoded") and body:
         import base64
         body = base64.b64decode(body)
-        print("[BODY] Base64 decoded")
+    elif isinstance(body, str) and body:
+        body = body.encode("utf-8")  # convert string to bytes
 
     client = TestClient(app, raise_server_exceptions=False)
 
@@ -62,7 +60,6 @@ def handler(event, context):
         content=body if body else None,
     )
 
-    # Minimal response log
     print(f"[LAMBDA RESPONSE] Status: {response.status_code}")
 
     return {
