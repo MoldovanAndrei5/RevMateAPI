@@ -39,12 +39,13 @@ def handler(event, context):
     method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "GET")
     path = event.get("path") or event.get("rawPath", "/")
     query = event.get("queryStringParameters") or {}
-    headers = event.get("headers") or {}
+    headers = dict(event.get("headers") or {})
     body = event.get("body") or ""
-    
+
     print(f"[DEBUG] Raw event: {json.dumps(event)}")
     print(f"[DEBUG] Body type: {type(body)}")
     print(f"[DEBUG] Body value: {body}")
+    print(f"[DEBUG] Headers received: {headers}")
 
     print(f"[LAMBDA REQUEST] {method} {path}")
 
@@ -52,7 +53,11 @@ def handler(event, context):
         import base64
         body = base64.b64decode(body)
     elif isinstance(body, str) and body:
-        body = body.encode("utf-8")  # convert string to bytes
+        body = body.encode("utf-8")
+
+    # Force Content-Type to application/json for non-GET requests
+    if method in ("POST", "PUT", "PATCH") and body:
+        headers["content-type"] = "application/json"
 
     client = TestClient(app, raise_server_exceptions=False)
 
@@ -72,8 +77,7 @@ def handler(event, context):
         "body": response.text,
         "isBase64Encoded": False,
     }
-# -------------------------------
-# Local dev
-# -------------------------------
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
