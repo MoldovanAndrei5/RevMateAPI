@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from database import Base
@@ -13,7 +13,7 @@ class MaintenanceTask(Base):
     category = Column(String(50))
     mileage = Column(Integer, nullable=True)
     cost = Column(Numeric(10, 2), nullable=True)
-    scheduled_date = Column(Integer, nullable=True)
-    completed_date = Column(Integer, nullable=True)
+    scheduled_date = Column(BigInteger, nullable=True)
+    completed_date = Column(BigInteger, nullable=True)
     notes = Column(String(1000), nullable=True)
     car = relationship("Car", back_populates="tasks")
