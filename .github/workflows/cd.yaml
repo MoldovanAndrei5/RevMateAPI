@@ -12,40 +12,25 @@ jobs:
   update-lambda:
     runs-on: ubuntu-latest
     steps:
-      # -----------------------------
-      # Checkout code
-      # -----------------------------
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # -----------------------------
-      # Set up Python (optional, for zip)
-      # -----------------------------
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.14"
 
-      # -----------------------------
-      # Zip Lambda function code
-      # -----------------------------
       - name: Zip Lambda function
         run: |
           # Zip all files in the folder
           zip -r function.zip *
 
-      # -----------------------------
-      # Configure AWS credentials
-      # -----------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # -----------------------------
-      # Update Lambda function code
-      # -----------------------------
       - name: Update Lambda code
         run: |
           aws lambda update-function-code \
