@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+    branches:
+      - main  
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+          
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check syntax (compile all .py files)
+        run: python -m compileall -q .
+        
+      - name: Import check
+        env:
+          DB_HOST: "localhost"
+          DB_PORT: "1234"
+          DB_NAME: "ci_db"
+          DB_USERNAME: "ci_user"
+          DB_PASSWORD: "ci_password"
+        run: python -c "import main"
