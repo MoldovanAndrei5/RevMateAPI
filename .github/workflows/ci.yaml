@@ -13,7 +13,10 @@ jobs:
     
     services:
       postgres:
-        image: ghcr.io/cloudnative-pg/postgresql:15
+        image: postgres:15
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           POSTGRES_USER: ci_user
           POSTGRES_PASSWORD: ci_password
