@@ -26,7 +26,7 @@ app.add_middleware(
 app.include_router(car_router, prefix="/cars", tags=["Cars"])
 app.include_router(task_router, prefix="/tasks", tags=["Tasks"])
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-app.include_router(transfer_router, prefix="/transfer", tags=["Transfer"])
+app.include_router(transfer_router, prefix="/transfer", tags=["Transfers"])
 
 @app.get("/")
 def root():

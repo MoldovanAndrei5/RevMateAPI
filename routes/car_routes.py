@@ -1,10 +1,14 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
+
+from models import MaintenanceTask
 from schemas.car_schema import CarSchema, CarCreate, CarUpdate
 from models.car import Car
 from database import get_db
 from utils.auth import get_current_user
+from utils.pdf_generator import generate_car_report
 
 router = APIRouter(tags=["Cars"])
 
@@ -52,3 +56,29 @@ def delete_car(car_uuid: str, db: Session = Depends(get_db), user_id: int = Depe
     return {
         "message": f"Car {car_uuid} deleted successfully"
     }
+
+@router.get("/{car_uuid}/report")
+def get_car_report(
+    car_uuid: str,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user)
+):
+    car = db.query(Car).filter(
+        Car.car_uuid == car_uuid,
+        Car.user_id == user_id
+    ).first()
+    if not car:
+        raise HTTPException(status_code=404, detail="Car not found")
+
+    tasks = db.query(MaintenanceTask).filter(
+        MaintenanceTask.car_uuid == car_uuid
+    ).all()
+
+    pdf_bytes = generate_car_report(car, tasks)
+    filename = f"revmate_{car.make}_{car.model}_{car.year}_report.pdf".replace(" ", "_")
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

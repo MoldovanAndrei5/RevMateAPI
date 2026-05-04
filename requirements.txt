@@ -11,3 +11,4 @@ pydantic==2.12.5
 pydantic[email]==2.12.5
 dotenv
 httpx
+reportLab==4.5.0

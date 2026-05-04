@@ -10,7 +10,7 @@ from models.user import User
 from schemas.car_transfer_schema import CarTransferInitiate, CarTransferIncomingResponse, CarTransferOutgoingResponse
 from utils.auth import get_current_user
 
-router = APIRouter(tags=["Transfer"], dependencies=[Depends(get_current_user)])
+router = APIRouter(tags=["Transfers"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/initiate", response_model=CarTransferOutgoingResponse)
