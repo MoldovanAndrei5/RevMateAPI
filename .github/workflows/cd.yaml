@@ -1,16 +1,59 @@
 name: Push code to Lambda
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches:
-      - main  
+      - main
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  update-layer:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Check if requirements changed
+        id: check
+        run: |
+          git diff HEAD~1 --name-only | grep requirements.txt && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+
+      - name: Build and update layer
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          mkdir -p layer/python
+          pip install -r requirements.txt -t layer/python
+          cd layer && zip -r ../layer.zip .
+          
+          LAYER_ARN=$(aws lambda publish-layer-version \
+            --layer-name dependenciesBackend \
+            --zip-file fileb://../layer.zip \
+            --compatible-runtimes python3.14 \
+            --query 'LayerVersionArn' \
+            --output text)
+          
+          aws lambda update-function-configuration \
+            --function-name carBackend \
+            --layers $LAYER_ARN
+  
   update-lambda:
     runs-on: ubuntu-latest
+    needs: update-layer
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
