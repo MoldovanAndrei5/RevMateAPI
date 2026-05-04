@@ -8,12 +8,13 @@ from database import engine
 from routes.car_routes import router as car_router
 from routes.task_routes import router as task_router
 from routes.auth_routes import router as auth_router
+from routes.transfer_routes import router as transfer_router
 import models
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Car Maintenance Tracker")
-# hello world 2
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +26,8 @@ app.add_middleware(
 app.include_router(car_router, prefix="/cars", tags=["Cars"])
 app.include_router(task_router, prefix="/tasks", tags=["Tasks"])
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-# hello world
+app.include_router(transfer_router, prefix="/transfer", tags=["Transfer"])
+
 @app.get("/")
 def root():
     return {"message": "Welcome to Car Maintenance Tracker!"}
@@ -33,7 +35,6 @@ def root():
 @app.get("/health")
 async def health_check():
     return {"status": "Healthy"}
-
 
 def handler(event, context):
     method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "GET")
@@ -77,7 +78,7 @@ def handler(event, context):
         "body": response.text,
         "isBase64Encoded": False,
     }
-#teeest
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

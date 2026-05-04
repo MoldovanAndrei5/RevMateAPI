@@ -16,4 +16,5 @@ class MaintenanceTask(Base):
     scheduled_date = Column(BigInteger, nullable=True)
     completed_date = Column(BigInteger, nullable=True)
     notes = Column(String(1000), nullable=True)
+    
     car = relationship("Car", back_populates="tasks")
