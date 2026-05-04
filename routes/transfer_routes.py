@@ -10,7 +10,7 @@ from models.user import User
 from schemas.car_transfer_schema import CarTransferInitiate, CarTransferIncomingResponse, CarTransferOutgoingResponse
 from utils.auth import get_current_user
 
-router = APIRouter(tags=["Transfers"], dependencies=[Depends(get_current_user)])
+router = APIRouter(tags=["Transfer"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/initiate", response_model=CarTransferOutgoingResponse)
@@ -41,7 +41,7 @@ def initiate_transfer(
         raise HTTPException(400, "A pending transfer already exists for this car")
 
     transfer = CarTransfer(
-        transfer_id=uuid.uuid4(),
+        transfer_uuid=uuid.uuid4(),
         car_uuid=body.car_uuid,
         sender_user_id=user_id,
         receiver_user_id=receiver.user_id,
@@ -54,7 +54,7 @@ def initiate_transfer(
     db.refresh(transfer)
 
     return CarTransferOutgoingResponse(
-        transfer_uuid=transfer.transfer_id,
+        transfer_uuid=transfer.transfer_uuid,
         receiver_email=receiver.email,
         receiver_first_name=receiver.first_name,
         receiver_last_name=receiver.last_name,
@@ -83,7 +83,7 @@ def get_incoming_transfers(
 
     return [
         CarTransferIncomingResponse(
-            transfer_uuid=t.transfer_id,
+            transfer_uuid=t.transfer_uuid,
             sender_email=t.sender.email,
             sender_first_name=t.sender.first_name,
             sender_last_name=t.sender.last_name,
@@ -114,7 +114,7 @@ def get_outgoing_transfers(
 
     return [
         CarTransferOutgoingResponse(
-            transfer_uuid=t.transfer_id,
+            transfer_uuid=t.transfer_uuid,
             receiver_email=t.receiver.email,
             receiver_first_name=t.receiver.first_name,
             receiver_last_name=t.receiver.last_name,
@@ -139,7 +139,7 @@ def accept_transfer(
     transfer = db.query(CarTransfer).options(
         joinedload(CarTransfer.car)
     ).filter(
-        CarTransfer.transfer_id == transfer_uuid,
+        CarTransfer.transfer_uuid == transfer_uuid,
         CarTransfer.receiver_user_id == user_id,
         CarTransfer.status == "pending"
     ).first()
@@ -169,7 +169,7 @@ def reject_transfer(
     user_id: int = Depends(get_current_user)
 ):
     transfer = db.query(CarTransfer).filter(
-        CarTransfer.transfer_id == transfer_uuid,
+        CarTransfer.transfer_uuid == transfer_uuid,
         CarTransfer.receiver_user_id == user_id,
         CarTransfer.status == "pending"
     ).first()
@@ -189,7 +189,7 @@ def cancel_transfer(
     user_id: int = Depends(get_current_user)
 ):
     transfer = db.query(CarTransfer).filter(
-        CarTransfer.transfer_id == transfer_uuid,
+        CarTransfer.transfer_uuid == transfer_uuid,
         CarTransfer.sender_user_id == user_id,
         CarTransfer.status == "pending"
     ).first()
