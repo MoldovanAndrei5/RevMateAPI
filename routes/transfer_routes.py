@@ -69,10 +69,7 @@ def initiate_transfer(
 
 
 @router.get("/incoming", response_model=list[CarTransferIncomingResponse])
-def get_incoming_transfers(
-    db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user)
-):
+def get_incoming_transfers(db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
     transfers = db.query(CarTransfer).options(
         joinedload(CarTransfer.sender),
         joinedload(CarTransfer.car)
