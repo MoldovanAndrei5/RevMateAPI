@@ -14,11 +14,7 @@ router = APIRouter(tags=["Transfers"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/initiate", response_model=CarTransferOutgoingResponse)
-def initiate_transfer(
-    body: CarTransferInitiate,
-    db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user)
-):
+def initiate_transfer(body: CarTransferInitiate, db: Session = Depends(get_db), user_id: int = Depends(get_current_user)):
     car = db.query(Car).filter(
         Car.car_uuid == body.car_uuid,
         Car.user_id == user_id
