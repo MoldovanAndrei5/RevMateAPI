@@ -18,3 +18,4 @@ class MaintenanceTask(Base):
     notes = Column(String(1000), nullable=True)
     
     car = relationship("Car", back_populates="tasks")
+    invoices = relationship("Invoice", back_populates="task", cascade="all, delete-orphan")

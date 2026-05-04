@@ -9,6 +9,8 @@ from routes.car_routes import router as car_router
 from routes.task_routes import router as task_router
 from routes.auth_routes import router as auth_router
 from routes.transfer_routes import router as transfer_router
+from routes.invoice_routes import router as invoice_router
+from routes.upload_routes import router as upload_router
 import models
 
 models.Base.metadata.create_all(bind=engine)
@@ -27,6 +29,8 @@ app.include_router(car_router, prefix="/cars", tags=["Cars"])
 app.include_router(task_router, prefix="/tasks", tags=["Tasks"])
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(transfer_router, prefix="/transfer", tags=["Transfers"])
+app.include_router(invoice_router, prefix="/invoices", tags=["Invoices"])
+app.include_router(upload_router, prefix="/upload", tags=["Upload"])
 
 @app.get("/")
 def root():

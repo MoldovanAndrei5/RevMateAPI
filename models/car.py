@@ -17,7 +17,7 @@ class Car(Base):
     vin = Column(String(17), unique=True, index=True)
     mileage = Column(Integer)
     license_plate = Column(String(20))
-    image_path = Column(String(255), nullable=True)
+    image_key = Column(String(500), nullable=True)
 
     user = relationship("User", back_populates="cars")
     tasks = relationship("MaintenanceTask", back_populates="car", cascade="all, delete-orphan")

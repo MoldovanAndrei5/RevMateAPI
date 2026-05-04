@@ -13,7 +13,7 @@ class CarSchema(BaseModel):
     vin: str
     mileage: int
     license_plate: str
-    image_path: Optional[str] = None
+    image_key: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -27,7 +27,7 @@ class CarCreate(BaseModel):
     vin: str
     mileage: int
     license_plate: str
-    image_path: Optional[str] = None
+    image_key: Optional[str] = None
     
 class CarUpdate(BaseModel):
     name: Optional[str] = None
@@ -37,4 +37,4 @@ class CarUpdate(BaseModel):
     vin: Optional[str] = None
     mileage: Optional[int] = None
     license_plate: Optional[str] = None
-    image_path: Optional[str] = None
+    image_key: Optional[str] = None

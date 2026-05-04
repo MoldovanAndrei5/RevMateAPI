@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from models import MaintenanceTask
 from schemas.car_schema import CarSchema, CarCreate, CarUpdate
@@ -70,7 +70,9 @@ def get_car_report(
     if not car:
         raise HTTPException(status_code=404, detail="Car not found")
 
-    tasks = db.query(MaintenanceTask).filter(
+    tasks = db.query(MaintenanceTask).options(
+        joinedload(MaintenanceTask.invoices)
+    ).filter(
         MaintenanceTask.car_uuid == car_uuid
     ).all()
 
