@@ -27,11 +27,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Check if requirements changed
-        id: check
-        run: |
-          git diff HEAD~1 --name-only | grep requirements.txt && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
-
       - name: Build and update layer
         if: steps.check.outputs.changed == 'true'
         run: |
