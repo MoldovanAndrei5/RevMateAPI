@@ -28,7 +28,6 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Build and update layer
-        if: steps.check.outputs.changed == 'true'
         run: |
           mkdir -p layer/python
           pip install -r requirements.txt -t layer/python
