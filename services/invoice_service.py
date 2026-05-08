@@ -50,12 +50,18 @@ class InvoiceService:
         return InvoiceDownloadResponse(download_url=generate_presigned_download_url(invoice.file_key))
 
     def delete_invoice(self, invoice_uuid: UUID, user_id: int) -> dict:
+        print(f"[DELETE] Attempting to delete invoice {invoice_uuid} for user {user_id}")
         invoice = self.repo.get_by_uuid(invoice_uuid, user_id)
+        print(f"[DELETE] Invoice found: {invoice}")
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found")
         try:
+            print(f"[DELETE] Deleting from S3: {invoice.file_key}")
             delete_file(invoice.file_key)
-        except Exception:
+            print(f"[DELETE] S3 delete successful")
+        except Exception as e:
+            print(f"[DELETE] S3 delete failed: {e}")
             raise HTTPException(status_code=500, detail="Failed to delete file from storage")
         self.repo.delete(invoice)
+        print(f"[DELETE] DB delete successful")
         return {"message": "Invoice deleted successfully"}
