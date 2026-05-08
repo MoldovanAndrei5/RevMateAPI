@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 )
@@ -66,6 +66,10 @@ def generate_car_report(car, tasks: list) -> bytes:
         "SectionHeader", fontSize=13, fontName="Helvetica-Bold",
         textColor=PRIMARY, spaceBefore=16, spaceAfter=6,
     )
+    task_title_style = ParagraphStyle(
+        "TaskTitle", fontSize=11, fontName="Helvetica-Bold",
+        textColor=PRIMARY, spaceAfter=4,
+    )
     body_style = ParagraphStyle(
         "Body", fontSize=10, fontName="Helvetica",
         textColor=PRIMARY, leading=14,
@@ -78,7 +82,7 @@ def generate_car_report(car, tasks: list) -> bytes:
         "Footer", fontSize=8, textColor=MUTED, alignment=TA_CENTER
     )
 
-    # Header 
+    # Header
     car_label = f"{car.year} {car.make} {car.model}"
     header_data = [[
         Paragraph("<b>RevMate</b>", title_style),
@@ -102,7 +106,7 @@ def generate_car_report(car, tasks: list) -> bytes:
     elements.append(HRFlowable(width="100%", thickness=1, color=LIGHT_BG))
     elements.append(Spacer(1, 0.3 * cm))
 
-    # Car Details
+    # Vehicle Details
     elements.append(Paragraph("Vehicle Details", section_header_style))
     car_details = [
         ["Name", car.name or "—", "VIN", car.vin or "—"],
@@ -159,95 +163,105 @@ def generate_car_report(car, tasks: list) -> bytes:
     elements.append(summary_table)
     elements.append(Spacer(1, 0.5 * cm))
 
-    # Service History
+    # Service History - one block per task
     elements.append(Paragraph("Service History", section_header_style))
+
     if not tasks:
         elements.append(Paragraph("No maintenance tasks recorded.", body_style))
     else:
-        task_header = ["Title", "Category", "Mileage", "Cost", "Scheduled", "Completed", "Invoices"]
-        task_rows = [task_header]
-        for t in sorted(tasks, key=lambda x: x.scheduled_date or 0, reverse=True):
-            task_rows.append([
-                t.title or "—",
-                t.category or "—",
-                format_mileage(t.mileage),
-                format_cost(t.cost),
-                format_timestamp(t.scheduled_date),
-                format_timestamp(t.completed_date),
-                str(len(t.invoices)) if t.invoices else "0",
-            ])
+        sorted_tasks = sorted(tasks, key=lambda x: x.scheduled_date or 0, reverse=True)
 
-        col_widths = [3.8 * cm, 2.5 * cm, 2.3 * cm, 1.8 * cm, 2.2 * cm, 2.2 * cm, 1.7 * cm]
-        task_table = Table(task_rows, colWidths=col_widths, repeatRows=1)
-        task_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
-            ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 9),
-            ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 9),
-            ("TEXTCOLOR", (0, 1), (-1, -1), PRIMARY),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, LIGHT_BG]),
-            ("ALIGN", (2, 1), (-1, -1), "CENTER"),
-            ("ALIGN", (0, 1), (1, -1), "LEFT"),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E0E0E0")),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ]))
-        elements.append(task_table)
+        for t in sorted_tasks:
+            # Task title bar with status
+            status = "Completed" if t.completed_date else "Scheduled"
+            status_hex = "27AE60" if t.completed_date else "E67E22"
 
-        # Notes
-        tasks_with_notes = [t for t in tasks if t.notes]
-        if tasks_with_notes:
-            elements.append(Spacer(1, 0.5 * cm))
-            elements.append(Paragraph("Notes", section_header_style))
-            for t in tasks_with_notes:
-                elements.append(Paragraph(f"<b>{t.title}</b>: {t.notes}", body_style))
-                elements.append(Spacer(1, 0.15 * cm))
+            title_data = [[
+                Paragraph(t.title or "—", task_title_style),
+                Paragraph(
+                    f"<font color='#{status_hex}'><b>{status}</b></font>",
+                    ParagraphStyle("Status", fontSize=10, fontName="Helvetica-Bold", alignment=TA_RIGHT)
+                ),
+            ]]
+            title_table = Table(title_data, colWidths=[12 * cm, 5 * cm])
+            title_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), LIGHT_BG),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (0, -1), 10),
+                ("RIGHTPADDING", (-1, 0), (-1, -1), 10),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]))
+            elements.append(title_table)
 
-        # Invoices
-        tasks_with_invoices = [t for t in tasks if t.invoices]
-        if tasks_with_invoices:
-            elements.append(Spacer(1, 0.5 * cm))
-            elements.append(Paragraph("Invoices & Attachments", section_header_style))
-            invoice_header = ["Task", "File Name", "Type", "Size", "Uploaded"]
-            invoice_rows = [invoice_header]
-            for t in tasks_with_invoices:
-                for inv in t.invoices:
-                    invoice_rows.append([
-                        t.title or "—",
+            # Task details: category, cost, mileage, date
+            detail_data = [
+                ["Category", t.category or "—", "Cost", format_cost(t.cost)],
+                ["Mileage", format_mileage(t.mileage), "Date",
+                 format_timestamp(t.completed_date or t.scheduled_date)],
+            ]
+            detail_table = Table(detail_data, colWidths=[3 * cm, 5.5 * cm, 3 * cm, 5.5 * cm])
+            detail_table.setStyle(TableStyle([
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+                ("TEXTCOLOR", (0, 0), (0, -1), MUTED),
+                ("TEXTCOLOR", (2, 0), (2, -1), MUTED),
+                ("TEXTCOLOR", (1, 0), (1, -1), PRIMARY),
+                ("TEXTCOLOR", (3, 0), (3, -1), PRIMARY),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E0E0E0")),
+            ]))
+            elements.append(detail_table)
+
+            # Notes — only if present
+            if t.notes:
+                notes_data = [["Notes", t.notes]]
+                notes_table = Table(notes_data, colWidths=[3 * cm, 14 * cm])
+                notes_table.setStyle(TableStyle([
+                    ("FONTNAME", (0, 0), (0, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("TEXTCOLOR", (0, 0), (0, 0), MUTED),
+                    ("TEXTCOLOR", (1, 0), (1, 0), PRIMARY),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E0E0E0")),
+                ]))
+                elements.append(notes_table)
+
+            # Invoices — only if present
+            if t.invoices:
+                inv_rows = [["File Name", "Type", "Size", "Uploaded"]] + [
+                    [
                         inv.file_name,
                         inv.file_type.split("/")[-1].upper(),
                         format_file_size(inv.file_size),
                         inv.uploaded_at.strftime("%d %b %Y"),
-                    ])
-            inv_col_widths = [4 * cm, 5.5 * cm, 2 * cm, 2 * cm, 3.5 * cm]
-            invoice_table = Table(invoice_rows, colWidths=inv_col_widths, repeatRows=1)
-            invoice_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
-                ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 9),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 1), (-1, -1), 9),
-                ("TEXTCOLOR", (0, 1), (-1, -1), PRIMARY),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, LIGHT_BG]),
-                ("ALIGN", (2, 1), (-1, -1), "CENTER"),
-                ("ALIGN", (0, 1), (1, -1), "LEFT"),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E0E0E0")),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ]))
-            elements.append(invoice_table)
+                    ]
+                    for inv in t.invoices
+                ]
+                inv_table = Table(inv_rows, colWidths=[8 * cm, 2.5 * cm, 2.5 * cm, 4 * cm])
+                inv_table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8E8E8")),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), MUTED),
+                    ("TEXTCOLOR", (0, 1), (-1, -1), PRIMARY),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, LIGHT_BG]),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E0E0E0")),
+                ]))
+                elements.append(inv_table)
 
-    # Footer 
-    elements.append(Spacer(1, 0.5 * cm))
+            elements.append(Spacer(1, 0.5 * cm))
+
+    # Footer
     elements.append(HRFlowable(width="100%", thickness=1, color=LIGHT_BG))
     elements.append(Spacer(1, 0.2 * cm))
     elements.append(Paragraph(

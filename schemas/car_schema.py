@@ -13,7 +13,7 @@ class CarSchema(BaseModel):
     vin: str
     mileage: int
     license_plate: str
-    image_key: Optional[str] = None
+    image_url: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -18,7 +18,9 @@ class InvoiceResponse(BaseModel):
     file_type: str
     file_size: int
     uploaded_at: datetime
-    download_url: str
-
+    
     class Config:
         from_attributes = True
+    
+class InvoiceDownloadResponse(BaseModel):
+    download_url: str

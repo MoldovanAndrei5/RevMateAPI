@@ -4,7 +4,7 @@ from uuid import UUID
 
 from models.invoice import Invoice
 from repositories.invoice_repository import InvoiceRepository
-from schemas.invoice_schema import InvoiceCreate, InvoiceResponse
+from schemas.invoice_schema import InvoiceCreate, InvoiceResponse, InvoiceDownloadResponse
 from utils.s3 import generate_presigned_download_url, delete_file
 
 class InvoiceService:
@@ -20,7 +20,6 @@ class InvoiceService:
             file_type=invoice.file_type,
             file_size=invoice.file_size,
             uploaded_at=invoice.uploaded_at,
-            download_url=generate_presigned_download_url(invoice.file_key)
         )
 
     def create_invoice(self, body: InvoiceCreate, user_id: int) -> InvoiceResponse:
@@ -43,6 +42,12 @@ class InvoiceService:
             raise HTTPException(status_code=404, detail="Task not found")
         invoices = self.repo.get_by_task(task_uuid)
         return [self._build_response(i) for i in invoices]
+    
+    def get_invoice_download_link(self, invoice_uuid: UUID, user_id: int) -> InvoiceDownloadResponse:
+        invoice = self.repo.get_by_uuid(invoice_uuid, user_id)
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        return InvoiceDownloadResponse(download_url=generate_presigned_download_url(invoice.file_key))
 
     def delete_invoice(self, invoice_uuid: UUID, user_id: int) -> dict:
         invoice = self.repo.get_by_uuid(invoice_uuid, user_id)
