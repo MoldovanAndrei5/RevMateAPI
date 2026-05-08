@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from models.maintenance_task import MaintenanceTask
 from repositories.task_repository import TaskRepository
 from schemas.task_schema import TaskCreate, TaskUpdate
+from utils.s3 import delete_file
+
 
 class TaskService:
     def __init__(self, db: Session):
@@ -36,5 +38,10 @@ class TaskService:
         task = self.repo.get_by_uuid(task_uuid)
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
+        for invoice in task.invoices:
+            try:
+                delete_file(invoice.file_key)
+            except Exception:
+                raise HTTPException(status_code=500, detail="Failed to delete file from storage")
         self.repo.delete(task)
         return {"message": f"Task {task_uuid} deleted successfully"}

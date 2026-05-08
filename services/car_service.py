@@ -5,7 +5,7 @@ from models.car import Car
 from repositories.car_repository import CarRepository
 from schemas.car_schema import CarCreate, CarUpdate, CarSchema
 from utils.pdf_generator import generate_car_report
-from utils.s3 import generate_presigned_download_url
+from utils.s3 import generate_presigned_download_url, delete_file
 
 
 class CarService:
@@ -44,6 +44,18 @@ class CarService:
         car = self.repo.get_by_uuid(car_uuid, user_id)
         if not car:
             raise HTTPException(status_code=404, detail="Car not found")
+        tasks = self.repo.get_car_with_tasks_and_invoices(car_uuid)
+        for task in tasks:
+            for invoice in task.invoices:
+                try:
+                    delete_file(invoice.file_key)
+                except Exception:
+                    raise HTTPException(status_code=500, detail="Failed to delete file from storage")
+        if car.image_key is not None:
+            try:
+                delete_file(car.image_key)
+            except Exception:
+                raise HTTPException(status_code=500, detail="Failed to delete file from storage")
         self.repo.delete(car)
         return {"message": f"Car {car_uuid} deleted successfully"}
 
