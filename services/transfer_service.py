@@ -35,6 +35,7 @@ class TransferService:
         created = self.repo.create(transfer)
         return CarTransferOutgoingResponse(
             transfer_uuid=created.transfer_uuid,
+            car_uuid=body.car_uuid,
             receiver_email=receiver.email,
             receiver_first_name=receiver.first_name,
             receiver_last_name=receiver.last_name,
@@ -71,6 +72,7 @@ class TransferService:
         return [
             CarTransferOutgoingResponse(
                 transfer_uuid=t.transfer_uuid,
+                car_uuid=t.car_uuid,
                 receiver_email=t.receiver.email,
                 receiver_first_name=t.receiver.first_name,
                 receiver_last_name=t.receiver.last_name,

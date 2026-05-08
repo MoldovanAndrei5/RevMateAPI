@@ -9,6 +9,7 @@ class CarTransferInitiate(BaseModel):
 
 class CarTransferOutgoingResponse(BaseModel):
     transfer_uuid: UUID
+    car_uuid: UUID
     receiver_email: str
     receiver_first_name: str
     receiver_last_name: str
