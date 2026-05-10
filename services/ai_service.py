@@ -67,7 +67,6 @@ class AIService:
         text = response_text.strip()
         if text.startswith("```"):
             lines = text.split("\n")
-            # remove first and last line (``` markers)
             text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
         text = text.strip()
 
