@@ -12,7 +12,7 @@ AI_SERVICE_URL = os.getenv("AI_SERVICE_URL")
 @router.post("/suggestions")
 def get_task_suggestions(body: TaskSuggestionRequest):
     response = httpx.post(
-        f"{AI_SERVICE_URL}/suggestions",
+        f"{AI_SERVICE_URL}ai/suggestions",
         json=body.model_dump(mode="json"),
         timeout=25,
     )
