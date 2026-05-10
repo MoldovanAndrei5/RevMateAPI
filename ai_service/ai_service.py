@@ -3,11 +3,11 @@ from datetime import datetime, timezone, timedelta
 import json
 from uuid import UUID
 
-from fastapi import HTTPException
 from google import genai
 from google.genai import types
 
 from ai_schemas import TaskSuggestionResponse
+
 
 class AIService:
     def __init__(self):
@@ -20,10 +20,10 @@ class AIService:
             Each task object must have exactly these fields:
             - "title": string (short clear task name e.g. "Oil Change", "Brake Inspection")
             - "category": string must be EXACTLY one of (case sensitive): "Engine", "Brakes", "Transmission", "Tires", "Electrical", "Cooling", "Suspension", "Body", "Other"
-            - "mileage": number  (the ABSOLUTE odometer reading in km at which this task should be done, e.g. if car is at 85000km and oil change is due every 10000km, return 95000)
+            - "mileage": number or null (the ABSOLUTE odometer reading in km at which this task should be done, e.g. if car is at 85000km and oil change is due every 10000km, return 95000)
             - "scheduled_date_offset_days": integer (days from now to schedule, e.g. 30 = one month, 180 = six months)
             - "notes": string or null (brief reason why this task is needed)
-            
+
             Example output:
             [
               {
@@ -34,7 +34,7 @@ class AIService:
                 "notes": "Last oil change at 85000km, due every 10000km."
               }
             ]
-            
+
             Rules:
             - If no tasks can be suggested, just respond with an empty JSON array.
             - If tasks can be suggested, give 3-7 tasks.
@@ -57,13 +57,12 @@ class AIService:
             - Transmission: {request_data['transmission_type']}
             - Last oil change at: {request_data.get('last_oil_change_km', 'Unknown')} km
             - Known issues: {request_data.get('known_issues') or 'None mentioned'}
-        
+
             Based on this information, suggest the most important upcoming maintenance tasks for this car.
             Remember: respond ONLY with a JSON array, no other text.
         """
 
     def _parse_and_validate(self, response_text: str, car_uuid: UUID) -> list[TaskSuggestionResponse]:
-        # Strip markdown code blocks if present
         text = response_text.strip()
         if text.startswith("```"):
             lines = text.split("\n")
@@ -73,7 +72,7 @@ class AIService:
         try:
             data = json.loads(text)
         except json.JSONDecodeError as e:
-            raise HTTPException(status_code=500, detail=f"AI returned invalid JSON: {e}")
+            raise ValueError(f"AI returned invalid JSON: {e}")  # ✅ no FastAPI
 
         if not isinstance(data, list):
             raise ValueError("Response is not a JSON array")
@@ -105,7 +104,7 @@ class AIService:
                     mileage = int(mileage)
                 except (ValueError, TypeError):
                     mileage = None
-            
+
             scheduled_ms = int((now + timedelta(days=offset_days)).timestamp() * 1000)
 
             notes = item.get("notes")
@@ -122,7 +121,7 @@ class AIService:
             ))
 
         return tasks
-    
+
     def get_task_suggestions(self, request_data: dict) -> list[TaskSuggestionResponse]:
         prompt = self._build_prompt(request_data)
         last_error = None
@@ -139,8 +138,9 @@ class AIService:
                 if attempt < self.MAX_RETRIES:
                     prompt += f"\n\nPrevious attempt failed with error: {e}. Please fix and try again."
 
-        raise HTTPException(status_code=500, detail=f"Failed to generate valid tasks after {self.MAX_RETRIES} attempts. Last error: {last_error}")
-        
+        raise ValueError(
+            f"Failed to generate valid tasks after {self.MAX_RETRIES} attempts. Last error: {last_error}")  # ✅ no FastAPI
+
     def _generate_tasks(self, prompt: str) -> str:
         response = self.client.models.generate_content(
             model=self.MODEL_USED,
@@ -151,4 +151,3 @@ class AIService:
             contents=prompt,
         )
         return response.text
-        
