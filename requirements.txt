@@ -13,4 +13,3 @@ dotenv
 httpx
 reportLab==4.5.0
 boto3==1.43.3
-google-genai==2.0.1

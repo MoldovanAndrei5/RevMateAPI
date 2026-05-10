@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from google import genai
 from google.genai import types
 
-from schemas.task_schema import TaskSuggestionResponse
+from ai_schemas import TaskSuggestionResponse
 
 class AIService:
     def __init__(self):

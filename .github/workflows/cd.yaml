@@ -78,7 +78,7 @@ jobs:
 
       - name: Zip Lambda function
         run: |
-          zip -r function.zip *
+          zip -r function.zip . --exclude "ai_service/*"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -94,5 +94,41 @@ jobs:
           aws lambda update-function-code \
             --function-name carBackend \
             --zip-file fileb://function.zip \
+            --query 'FunctionArn' \
+            --output text
+
+  update-ai-lambda:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Build and deploy AI Lambda
+        run: |
+          cd ai_service
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp *.py package/
+          cd package && zip -r ../../ai_function.zip .
+          cd ../..
+
+          aws lambda wait function-updated \
+            --function-name aiService
+
+          aws lambda update-function-code \
+            --function-name aiService \
+            --zip-file fileb://ai_function.zip \
             --query 'FunctionArn' \
             --output text
