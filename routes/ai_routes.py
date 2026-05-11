@@ -4,6 +4,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException
 from schemas.task_schema import TaskSuggestionRequest, TaskSuggestionResponse
 from utils.auth import get_current_user
+import logging
 
 class AILambdaClient:
     _client = None
@@ -25,14 +26,18 @@ class AILambdaClient:
 
 router = APIRouter(tags=["AI"], dependencies=[Depends(get_current_user)])
 
+logger = logging.getLogger()
+
 @router.post("/suggestions", response_model=list[TaskSuggestionResponse])
 def get_task_suggestions(body: TaskSuggestionRequest):
     try:
+        logger.info(f"[AI] Invoking aiService with region: {os.getenv('AI_LAMBDA_REGION')}")
         result = AILambdaClient.invoke(
             function_name='aiService',
             payload=body.model_dump(mode="json")
         )
-        
+        logger.info(f"[AI] Result: {result}")
+
         if result.get('statusCode') != 200:
             detail = json.loads(result.get('body', '{}')).get('detail', 'AI service unavailable')
             raise HTTPException(status_code=500, detail=detail)
@@ -41,4 +46,5 @@ def get_task_suggestions(body: TaskSuggestionRequest):
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"[AI] Exception: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
