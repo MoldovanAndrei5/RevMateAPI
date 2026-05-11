@@ -37,6 +37,11 @@ class CarService:
         car = self.repo.get_by_uuid(car_uuid, user_id)
         if not car:
             raise HTTPException(status_code=404, detail="Car not found")
+        if data.image_key is not None and car.image_key is not None and data.image_key != car.image_key:
+            try:
+                delete_file(car.image_key)
+            except Exception:
+                raise HTTPException(status_code=500, detail="Failed to delete old image")
         updated = self.repo.update(car_uuid, user_id, data.model_dump())
         return updated
 
