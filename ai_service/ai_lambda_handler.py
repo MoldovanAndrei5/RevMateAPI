@@ -3,15 +3,12 @@ from ai_service import AIService
 
 def handler(event, context):
     try:
-        print(f"[DEBUG] Event: {json.dumps(event)}")
-
-        body = event.get("body", "{}")
-        print(f"[DEBUG] Body type: {type(body)}, value: {body}")
-
-        if isinstance(body, str):
-            body = json.loads(body)
-
-        print(f"[DEBUG] Parsed body: {body}")
+        if "body" in event:
+            body = event["body"]
+            if isinstance(body, str):
+                body = json.loads(body)
+        else:
+            body = event
 
         service = AIService()
         suggestions = service.get_task_suggestions(request_data=body)
