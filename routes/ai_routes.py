@@ -10,7 +10,7 @@ from utils.auth import get_current_user
 
 router = APIRouter(tags=["AI"], dependencies=[Depends(get_current_user)])
 
-lambda_client = boto3.client('lambda', region_name=os.getenv("AWS_REGION"))
+lambda_client = boto3.client('lambda', region_name=os.getenv("AI_LAMBDA_REGION"))
 
 @router.post("/suggestions")
 def get_task_suggestions(body: TaskSuggestionRequest):
