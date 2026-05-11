@@ -3,7 +3,7 @@ from ai_service import AIService
 
 def handler(event, context):
     try:
-        body = json.loads(event.get("body", "{}"))
+        body = event if isinstance(event, dict) else json.loads(event)
         service = AIService()
         suggestions = service.get_task_suggestions(request_data=body)
         return {

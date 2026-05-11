@@ -11,10 +11,7 @@ class AILambdaClient:
     @classmethod
     def get_client(cls):
         if cls._client is None:
-            cls._client = boto3.client(
-                'lambda',
-                region_name=os.getenv("AWS_REGION")
-            )
+            cls._client = boto3.client('lambda', region_name=os.getenv("AI_LAMBDA_REGION"))
         return cls._client
 
     @classmethod
