@@ -12,7 +12,7 @@ from ai_schemas import TaskSuggestionResponse
 class AIService:
     def __init__(self):
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"), http_options=types.HttpOptions(timeout=25000))
-        self.MODEL_USED = "gemini-1.5-flash"
+        self.MODEL_USED = "gemini-2.0-flash"
         self.MAX_RETRIES = 3
         self.GET_TASK_SUGGESTIONS_SYSTEM_INSTRUCTIONS = """
             You are an expert automotive technician. Your job is to suggest upcoming maintenance tasks for a car based on its details.
