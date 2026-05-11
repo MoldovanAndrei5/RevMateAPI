@@ -1,4 +1,7 @@
+import json
 import os
+
+import boto3
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -7,28 +10,25 @@ from utils.auth import get_current_user
 
 router = APIRouter(tags=["AI"], dependencies=[Depends(get_current_user)])
 
-AI_SERVICE_URL = os.getenv("AI_SERVICE_URL")
-
-import logging
-logger = logging.getLogger()
+lambda_client = boto3.client('lambda', region_name=os.getenv("AWS_REGION"))
 
 @router.post("/suggestions")
 def get_task_suggestions(body: TaskSuggestionRequest):
     try:
-        logger.info(f"Calling AI service at: {AI_SERVICE_URL}/ai/suggestions")
-        response = httpx.post(
-            f"{AI_SERVICE_URL}/ai/suggestions",
-            json=body.model_dump(mode="json"),
-            timeout=25,
+        response = lambda_client.invoke(
+            FunctionName='aiService',
+            InvocationType='RequestResponse',
+            Payload=json.dumps(body.model_dump(mode="json")).encode('utf-8')
         )
-        logger.info(f"AI service status: {response.status_code}")
-        logger.info(f"AI service response: {response.text}")
-        if response.status_code != 200:
-            raise HTTPException(status_code=500, detail="AI service unavailable")
-        return response.json()
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=500, detail="AI service timed out")
-    except httpx.ConnectError as e:
-        raise HTTPException(status_code=500, detail=f"Cannot connect to AI service: {e}")
+
+        result = json.loads(response['Payload'].read())
+
+        if result.get('statusCode') != 200:
+            detail = json.loads(result.get('body', '{}')).get('detail', 'AI service unavailable')
+            raise HTTPException(status_code=500, detail=detail)
+
+        return json.loads(result['body'])
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI service error: {e}")
+        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
