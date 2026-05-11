@@ -1,50 +1,33 @@
-import boto3
-import json
 import os
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from schemas.task_schema import TaskSuggestionRequest, TaskSuggestionResponse
+
+from schemas.task_schema import TaskSuggestionRequest
 from utils.auth import get_current_user
-import logging
-
-class AILambdaClient:
-    _client = None
-
-    @classmethod
-    def get_client(cls):
-        if cls._client is None:
-            cls._client = boto3.client('lambda', region_name=os.getenv("AI_LAMBDA_REGION"))
-        return cls._client
-
-    @classmethod
-    def invoke(cls, function_name: str, payload: dict) -> dict:
-        response = cls.get_client().invoke(
-            FunctionName=function_name,
-            InvocationType='RequestResponse',
-            Payload=json.dumps(payload).encode('utf-8')
-        )
-        return json.loads(response['Payload'].read())
 
 router = APIRouter(tags=["AI"], dependencies=[Depends(get_current_user)])
 
+AI_SERVICE_URL = os.getenv("AI_SERVICE_URL")
+
+import logging
 logger = logging.getLogger()
 
-@router.post("/suggestions", response_model=list[TaskSuggestionResponse])
+@router.post("/suggestions")
 def get_task_suggestions(body: TaskSuggestionRequest):
     try:
-        logger.info(f"[AI] Invoking aiService with region: {os.getenv('AI_LAMBDA_REGION')}")
-        result = AILambdaClient.invoke(
-            function_name='aiService',
-            payload=body.model_dump(mode="json")
+        response = httpx.post(
+            f"{AI_SERVICE_URL}/ai/suggestions",
+            json=body.model_dump(mode="json"),
+            timeout=25,
         )
-        logger.info(f"[AI] Result: {result}")
-
-        if result.get('statusCode') != 200:
-            detail = json.loads(result.get('body', '{}')).get('detail', 'AI service unavailable')
-            raise HTTPException(status_code=500, detail=detail)
-
-        return json.loads(result['body'])
-    except HTTPException:
-        raise
+        logger.info(f"AI service status: {response.status_code}")
+        logger.info(f"AI service response: {response.text}")
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="AI service unavailable")
+        return response.json()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=500, detail="AI service timed out")
+    except httpx.ConnectError as e:
+        raise HTTPException(status_code=500, detail=f"Cannot connect to AI service: {e}")
     except Exception as e:
-        logger.error(f"[AI] Exception: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI service error: {e}")
