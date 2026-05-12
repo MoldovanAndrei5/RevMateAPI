@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 from models.user import User
+from repositories.interfaces.i_auth_repository import IAuthRepository
 
-class AuthRepository:
+class AuthRepository(IAuthRepository):
     def __init__(self, db: Session):
         self.db = db
 
@@ -18,9 +19,10 @@ class AuthRepository:
         return user
 
     def update_password(self, user_id: int, hashed_password: str) -> User | None:
-        db_query = self.db.query(User).filter(User.user_id == user_id)
-        if not db_query.first():
+        user = self.db.query(User).filter(User.user_id == user_id).first()
+        if not user:
             return None
-        db_query.update({"hashed_password": hashed_password})
+        user.hashed_password = hashed_password
         self.db.commit()
-        return db_query.first()
+        self.db.refresh(user)
+        return user

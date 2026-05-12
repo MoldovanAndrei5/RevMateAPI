@@ -1,6 +1,15 @@
 import json
 from ai_service import AIService
 
+service = AIService()
+
+def _response(status_code: int, body: dict | list) -> dict:
+    return {
+        "statusCode": status_code,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps(body)
+    }
+
 def handler(event, context):
     try:
         if "body" in event:
@@ -10,22 +19,9 @@ def handler(event, context):
         else:
             body = event
 
-        service = AIService()
         suggestions = service.get_task_suggestions(request_data=body)
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps([s.model_dump(mode="json") for s in suggestions])
-        }
+        return _response(200, [s.model_dump(mode="json") for s in suggestions])
     except ValueError as e:
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"detail": str(e)})
-        }
+        return _response(400, {"detail": str(e)})
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"detail": f"Unexpected error: {str(e)}"})
-        }
+        return _response(500, {"detail": f"Unexpected error: {str(e)}"})

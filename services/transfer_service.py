@@ -1,30 +1,52 @@
-import uuid
 from datetime import datetime, timezone, timedelta
+from uuid import UUID, uuid4
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
-
 from models.car_transfer import CarTransfer
-from repositories.transfer_repository import TransferRepository
+from repositories.interfaces.i_auth_repository import IAuthRepository
+from repositories.interfaces.i_car_repository import ICarRepository
+from repositories.interfaces.i_transfer_repository import ITransferRepository
 from schemas.car_transfer_schema import CarTransferInitiate, CarTransferIncomingResponse, CarTransferOutgoingResponse
+from schemas.response_schema import MessageResponse
+from services.interfaces.i_transfer_service import ITransferService
 
-class TransferService:
-    def __init__(self, db: Session):
-        self.repo = TransferRepository(db)
+class TransferService(ITransferService):
+    def __init__(self, repo: ITransferRepository, car_repo: ICarRepository, auth_repo: IAuthRepository):
+        self.repo = repo
+        self.car_repo = car_repo
+        self.auth_repo = auth_repo
+        
+    def _validate_incoming_owner(self, transfer_uuid: UUID, user_id: int) -> CarTransfer:
+        transfer = self.repo.get_pending_by_uuid(transfer_uuid)
+        if not transfer:
+            raise HTTPException(status_code=404, detail="Transfer not found")
+        if transfer.receiver_user_id != user_id:
+            raise HTTPException(status_code=403, detail="Transfer does not belong to user")
+        return transfer
+    
+    def _validate_outgoing_owner(self, transfer_uuid: UUID, user_id: int) -> CarTransfer:
+        transfer = self.repo.get_pending_by_uuid(transfer_uuid)
+        if not transfer:
+            raise HTTPException(status_code=404, detail="Transfer not found")
+        if transfer.sender_user_id != user_id:
+            raise HTTPException(status_code=403, detail="Transfer does not belong to user")
+        return transfer
 
     def initiate_transfer(self, body: CarTransferInitiate, user_id: int) -> CarTransferOutgoingResponse:
-        car = self.repo.get_car_by_uuid(body.car_uuid, user_id)
+        car = self.car_repo.get_by_uuid(body.car_uuid)
         if not car:
-            raise HTTPException(404, "Car not found or does not belong to you")
-        receiver = self.repo.get_receiver_by_email(body.receiver_email)
+            raise HTTPException(status_code=404, detail="Car not found")
+        if car.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Car does not belong to user")
+        receiver = self.auth_repo.get_by_email(body.receiver_email)
         if not receiver:
-            raise HTTPException(404, "No user found with that email")
+            raise HTTPException(status_code=404, detail="No user found with that email")
         if receiver.user_id == user_id:
-            raise HTTPException(400, "You cannot transfer a car to yourself")
+            raise HTTPException(status_code=400, detail="You cannot transfer a car to yourself")
         existing = self.repo.get_pending_by_car(body.car_uuid)
         if existing:
             raise HTTPException(400, "A pending transfer already exists for this car")
         transfer = CarTransfer(
-            transfer_uuid=uuid.uuid4(),
+            transfer_uuid=uuid4(),
             car_uuid=body.car_uuid,
             sender_user_id=user_id,
             receiver_user_id=receiver.user_id,
@@ -87,28 +109,22 @@ class TransferService:
             for t in transfers
         ]
 
-    def accept_transfer(self, transfer_uuid: str, user_id: int) -> dict:
-        transfer = self.repo.get_by_uuid_and_receiver(transfer_uuid, user_id)
-        if not transfer:
-            raise HTTPException(404, "Transfer not found")
+    def accept_transfer(self, transfer_uuid: UUID, user_id: int) -> MessageResponse:
+        transfer = self._validate_incoming_owner(transfer_uuid, user_id)
         if datetime.now(timezone.utc) > transfer.expires_at:
             self.repo.update_status(transfer, "expired")
             raise HTTPException(400, "Transfer has expired")
         if not transfer.car:
             raise HTTPException(404, "Car no longer exists")
         self.repo.transfer_car_ownership(transfer.car, user_id, transfer)
-        return {"message": "Car transfer accepted successfully"}
+        return MessageResponse(message="Transfer accepted")
 
-    def reject_transfer(self, transfer_uuid: str, user_id: int) -> dict:
-        transfer = self.repo.get_by_uuid_and_receiver(transfer_uuid, user_id)
-        if not transfer:
-            raise HTTPException(404, "Transfer not found")
+    def reject_transfer(self, transfer_uuid: UUID, user_id: int) -> MessageResponse:
+        transfer = self._validate_incoming_owner(transfer_uuid, user_id)
         self.repo.update_status(transfer, "rejected")
-        return {"message": "Transfer rejected"}
+        return MessageResponse(message="Transfer rejected")
 
-    def cancel_transfer(self, transfer_uuid: str, user_id: int) -> dict:
-        transfer = self.repo.get_by_uuid_and_sender(transfer_uuid, user_id)
-        if not transfer:
-            raise HTTPException(404, "Transfer not found or already resolved")
+    def cancel_transfer(self, transfer_uuid: UUID, user_id: int) -> MessageResponse:
+        transfer = self._validate_outgoing_owner(transfer_uuid, user_id)
         self.repo.update_status(transfer, "cancelled")
-        return {"message": "Transfer cancelled"}
+        return MessageResponse(message="Transfer cancelled")

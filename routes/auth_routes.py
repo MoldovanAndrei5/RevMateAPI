@@ -1,24 +1,21 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-
-from database import get_db
+from dependencies.di import get_auth_service
+from schemas.auth_schema import AuthResponse
+from schemas.response_schema import MessageResponse
 from schemas.user_schema import UserLogin, UserCreate, UserUpdate
-from services.auth_service import AuthService
+from services.interfaces.i_auth_service import IAuthService
 from utils.auth import get_current_user
 
 router = APIRouter(tags=["Auth"])
 
-def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
-    return AuthService(db)
+@router.post("/login", response_model=AuthResponse)
+def login(user: UserLogin, auth_service: IAuthService = Depends(get_auth_service)):
+    return auth_service.login(user)
 
-@router.post("/login")
-def login(user: UserLogin, service: AuthService = Depends(get_auth_service)):
-    return service.login(user)
+@router.post("/register", response_model=MessageResponse)
+def register(user: UserCreate, auth_service: IAuthService = Depends(get_auth_service)):
+    return auth_service.register(user)
 
-@router.post("/register")
-def register(user: UserCreate, service: AuthService = Depends(get_auth_service)):
-    return service.register(user)
-
-@router.put("/reset-password")
-def reset_password(user_data: UserUpdate, user_id: int = Depends(get_current_user), service: AuthService = Depends(get_auth_service)):
-    return service.reset_password(user_id, user_data)
+@router.put("/reset-password", response_model=MessageResponse)
+def reset_password(user_data: UserUpdate, user_id: int = Depends(get_current_user), auth_service: IAuthService = Depends(get_auth_service)):
+    return auth_service.reset_password(user_id, user_data)

@@ -10,41 +10,42 @@ from ai_schemas import TaskSuggestionResponse
 
 
 class AIService:
+    MODEL_USED = "gemini-2.0-flash"
+    MAX_RETRIES = 3
+    GET_TASK_SUGGESTIONS_SYSTEM_INSTRUCTIONS = """
+        You are an expert automotive technician. Your job is to suggest upcoming maintenance tasks for a car based on its details.
+        You must respond ONLY with a valid JSON array of maintenance task objects. No explanations, no markdown, no extra text, just the raw JSON array.
+        Each task object must have exactly these fields:
+        - "title": string (short clear task name e.g. "Oil Change", "Brake Inspection")
+        - "category": string must be EXACTLY one of (case sensitive): "Engine", "Brakes", "Transmission", "Tires", "Electrical", "Cooling", "Suspension", "Body", "Other"
+        - "mileage": number or null (the ABSOLUTE odometer reading in km at which this task should be done, e.g. if car is at 85000km and oil change is due every 10000km, return 95000)
+        - "scheduled_date_offset_days": integer (days from now to schedule, e.g. 30 = one month, 180 = six months)
+        - "notes": string or null (brief reason why this task is needed)
+        
+        Example output:
+        [
+            {
+            "title": "Oil Change",
+            "category": "Engine",
+            "mileage": 95000,
+            "scheduled_date_offset_days": 60,
+            "notes": "Last oil change at 85000km, due every 10000km."
+            }
+        ]
+        
+        Rules:
+        - If no tasks can be suggested, just respond with an empty JSON array.
+        - If tasks can be suggested, give 3-7 tasks.
+        - Focus on what is actually needed based on mileage, fuel type, and known issues
+        - If the last oil change km is unknown, and the task is about changing the oil, set the mileage to the current mileage provided in the prompt.
+        - If mileage threshold cannot be determined for a task other than oil change, set "mileage" to null
+        - "scheduled_date_offset_days" must be at least 1
+        - For electric vehicles, do not suggest oil changes or transmission fluid services
+        - Always return a JSON array, even if empty
+    """
+    
     def __init__(self):
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"), http_options=types.HttpOptions(timeout=25000))
-        self.MODEL_USED = "gemini-2.0-flash"
-        self.MAX_RETRIES = 3
-        self.GET_TASK_SUGGESTIONS_SYSTEM_INSTRUCTIONS = """
-            You are an expert automotive technician. Your job is to suggest upcoming maintenance tasks for a car based on its details.
-            You must respond ONLY with a valid JSON array of maintenance task objects. No explanations, no markdown, no extra text, just the raw JSON array.
-            Each task object must have exactly these fields:
-            - "title": string (short clear task name e.g. "Oil Change", "Brake Inspection")
-            - "category": string must be EXACTLY one of (case sensitive): "Engine", "Brakes", "Transmission", "Tires", "Electrical", "Cooling", "Suspension", "Body", "Other"
-            - "mileage": number or null (the ABSOLUTE odometer reading in km at which this task should be done, e.g. if car is at 85000km and oil change is due every 10000km, return 95000)
-            - "scheduled_date_offset_days": integer (days from now to schedule, e.g. 30 = one month, 180 = six months)
-            - "notes": string or null (brief reason why this task is needed)
-
-            Example output:
-            [
-              {
-                "title": "Oil Change",
-                "category": "Engine",
-                "mileage": 95000,
-                "scheduled_date_offset_days": 60,
-                "notes": "Last oil change at 85000km, due every 10000km."
-              }
-            ]
-
-            Rules:
-            - If no tasks can be suggested, just respond with an empty JSON array.
-            - If tasks can be suggested, give 3-7 tasks.
-            - Focus on what is actually needed based on mileage, fuel type, and known issues
-            - If the last oil change km is unknown, and the task is about changing the oil, set the mileage to the current mileage provided in the prompt.
-            - If mileage threshold cannot be determined for a task other than oil change, set "mileage" to null
-            - "scheduled_date_offset_days" must be at least 1
-            - For electric vehicles, do not suggest oil changes or transmission fluid services
-            - Always return a JSON array, even if empty
-        """
 
     def _build_prompt(self, request_data: dict) -> str:
         return f"""
@@ -129,7 +130,7 @@ class AIService:
             try:
                 print(f"[AI] Attempt {attempt}/{self.MAX_RETRIES}")
                 raw = self._generate_tasks(prompt)
-                tasks = self._parse_and_validate(raw, request_data["car_uuid"])
+                tasks = self._parse_and_validate(raw, UUID(request_data["car_uuid"]))
                 print(f"[AI] Successfully generated {len(tasks)} tasks")
                 return tasks
             except Exception as e:

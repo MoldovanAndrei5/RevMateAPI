@@ -1,37 +1,30 @@
+from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 from models.car_transfer import CarTransfer
 from models.car import Car
-from models.user import User
+from repositories.interfaces.i_transfer_repository import ITransferRepository
 
-class TransferRepository:
+class TransferRepository(ITransferRepository):
     def __init__(self, db: Session):
         self.db = db
 
-    def get_receiver_by_email(self, email: str) -> User | None:
-        return self.db.query(User).filter(User.email == email).first()
-
-    def get_car_by_uuid(self, car_uuid: str, user_id: int) -> Car | None:
-        return self.db.query(Car).filter(Car.car_uuid == car_uuid, Car.user_id == user_id).first()
-
-    def get_pending_by_car(self, car_uuid: str) -> CarTransfer | None:
+    def get_pending_by_car(self, car_uuid: UUID) -> CarTransfer | None:
         return self.db.query(CarTransfer).filter(CarTransfer.car_uuid == car_uuid, CarTransfer.status == "pending").first()
+    
+    def get_pending_by_uuid(self, transfer_uuid: UUID) -> CarTransfer | None:
+        return self.db.query(CarTransfer)\
+            .options(joinedload(CarTransfer.car))\
+            .filter(CarTransfer.transfer_uuid == transfer_uuid, CarTransfer.status == "pending").first()
 
     def get_incoming(self, user_id: int) -> list[CarTransfer]:
-        return (self.db.query(CarTransfer).options(
-            joinedload(CarTransfer.sender),
-            joinedload(CarTransfer.car)).filter(CarTransfer.receiver_user_id == user_id, CarTransfer.status == "pending").all())
+        return self.db.query(CarTransfer)\
+            .options(joinedload(CarTransfer.sender),joinedload(CarTransfer.car))\
+            .filter(CarTransfer.receiver_user_id == user_id, CarTransfer.status == "pending").all()
 
     def get_outgoing(self, user_id: int) -> list[CarTransfer]:
-        return self.db.query(CarTransfer).options(
-            joinedload(CarTransfer.receiver),
-            joinedload(CarTransfer.car)).filter(CarTransfer.sender_user_id == user_id, CarTransfer.status == "pending").all()
-
-    def get_by_uuid_and_receiver(self, transfer_uuid: str, user_id: int) -> CarTransfer | None:
-        return self.db.query(CarTransfer).options(
-            joinedload(CarTransfer.car)).filter(CarTransfer.transfer_uuid == transfer_uuid, CarTransfer.receiver_user_id == user_id, CarTransfer.status == "pending").first()
-
-    def get_by_uuid_and_sender(self, transfer_uuid: str, user_id: int) -> CarTransfer | None:
-        return self.db.query(CarTransfer).filter(CarTransfer.transfer_uuid == transfer_uuid, CarTransfer.sender_user_id == user_id, CarTransfer.status == "pending").first()
+        return self.db.query(CarTransfer)\
+            .options(joinedload(CarTransfer.receiver),joinedload(CarTransfer.car))\
+            .filter(CarTransfer.sender_user_id == user_id, CarTransfer.status == "pending").all()
 
     def create(self, transfer: CarTransfer) -> CarTransfer:
         self.db.add(transfer)

@@ -1,67 +1,54 @@
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
 from uuid import UUID
-
 from models.invoice import Invoice
-from repositories.invoice_repository import InvoiceRepository
+from repositories.interfaces.i_invoice_repository import IInvoiceRepository
+from repositories.interfaces.i_task_repository import ITaskRepository
 from schemas.invoice_schema import InvoiceCreate, InvoiceResponse, InvoiceDownloadResponse
+from schemas.response_schema import MessageResponse
+from services.interfaces.i_invoice_service import IInvoiceService
 from utils.s3 import generate_presigned_download_url, delete_file
 
-class InvoiceService:
-    def __init__(self, db: Session):
-        self.repo = InvoiceRepository(db)
+class InvoiceService(IInvoiceService):
+    def __init__(self, repo: IInvoiceRepository, task_repo: ITaskRepository):
+        self.repo = repo
+        self.task_repo = task_repo
+    
+    def _validate_owner(self, invoice_uuid: UUID, user_id: int) -> Invoice:
+        invoice = self.repo.get_by_uuid_and_user(invoice_uuid, user_id)
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found for user")
+        return invoice
 
-    def _build_response(self, invoice: Invoice) -> InvoiceResponse:
-        return InvoiceResponse(
-            invoice_uuid=invoice.invoice_uuid,
-            task_uuid=invoice.task_uuid,
-            file_key=invoice.file_key,
-            file_name=invoice.file_name,
-            file_type=invoice.file_type,
-            file_size=invoice.file_size,
-            uploaded_at=invoice.uploaded_at,
-        )
-
-    def create_invoice(self, body: InvoiceCreate, user_id: int) -> InvoiceResponse:
-        task = self.repo.get_task_by_uuid(body.task_uuid, user_id)
+    def create_invoice(self, user_id: int, data: InvoiceCreate) -> InvoiceResponse:
+        task = self.task_repo.get_by_uuid_and_user(data.task_uuid, user_id)
         if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
+            raise HTTPException(status_code=404, detail="Task not found for user")
         invoice = Invoice(
-            task_uuid=body.task_uuid,
-            file_key=body.file_key,
-            file_name=body.file_name,
-            file_type=body.file_type,
-            file_size=body.file_size,
+            task_uuid=data.task_uuid,
+            file_key=data.file_key,
+            file_name=data.file_name,
+            file_type=data.file_type,
+            file_size=data.file_size,
         )
         created = self.repo.create(invoice)
-        return self._build_response(created)
+        return InvoiceResponse.model_validate(created)
 
     def get_task_invoices(self, task_uuid: UUID, user_id: int) -> list[InvoiceResponse]:
-        task = self.repo.get_task_by_uuid(task_uuid, user_id)
+        task = self.task_repo.get_by_uuid_and_user(task_uuid, user_id)
         if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
+            raise HTTPException(status_code=404, detail="Task not found for user")
         invoices = self.repo.get_by_task(task_uuid)
-        return [self._build_response(i) for i in invoices]
+        return [InvoiceResponse.model_validate(i) for i in invoices]
     
     def get_invoice_download_link(self, invoice_uuid: UUID, user_id: int) -> InvoiceDownloadResponse:
-        invoice = self.repo.get_by_uuid(invoice_uuid, user_id)
-        if not invoice:
-            raise HTTPException(status_code=404, detail="Invoice not found")
+        invoice = self._validate_owner(invoice_uuid, user_id)
         return InvoiceDownloadResponse(download_url=generate_presigned_download_url(invoice.file_key))
 
-    def delete_invoice(self, invoice_uuid: UUID, user_id: int) -> dict:
-        print(f"[DELETE] Attempting to delete invoice {invoice_uuid} for user {user_id}")
-        invoice = self.repo.get_by_uuid(invoice_uuid, user_id)
-        print(f"[DELETE] Invoice found: {invoice}")
-        if not invoice:
-            raise HTTPException(status_code=404, detail="Invoice not found")
+    def delete_invoice(self, invoice_uuid: UUID, user_id: int) -> MessageResponse:
+        invoice = self._validate_owner(invoice_uuid, user_id)
         try:
-            print(f"[DELETE] Deleting from S3: {invoice.file_key}")
             delete_file(invoice.file_key)
-            print(f"[DELETE] S3 delete successful")
-        except Exception as e:
-            print(f"[DELETE] S3 delete failed: {e}")
+        except Exception:
             raise HTTPException(status_code=500, detail="Failed to delete file from storage")
         self.repo.delete(invoice)
-        print(f"[DELETE] DB delete successful")
-        return {"message": "Invoice deleted successfully"}
+        return MessageResponse(message=f"Invoice {invoice_uuid} deleted successfully")
