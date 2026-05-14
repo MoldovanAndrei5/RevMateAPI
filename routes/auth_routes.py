@@ -12,9 +12,9 @@ router = APIRouter(tags=["Auth"])
 def login(user: UserLogin, auth_service: IAuthService = Depends(get_auth_service)):
     return auth_service.login(user)
 
-@router.get("/send-otp", response_model=MessageResponse)
+@router.post("/send-otp", response_model=MessageResponse)
 def send_otp(body: SendOtpRequest, auth_service: IAuthService = Depends(get_auth_service)):
-    auth_service.send_otp(body.email)
+    return auth_service.send_otp(body.email)
 
 @router.post("/register", response_model=MessageResponse)
 def register(user: UserCreate, auth_service: IAuthService = Depends(get_auth_service)):
