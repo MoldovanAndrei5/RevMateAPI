@@ -20,6 +20,7 @@ class UserCreate(BaseModel):
     last_name: str
     email: EmailStr
     password: str
+    otp_code: str
     
 class UserUpdate(BaseModel):
     password: str

@@ -6,9 +6,11 @@ from repositories.car_repository import CarRepository
 from repositories.interfaces.i_auth_repository import IAuthRepository
 from repositories.interfaces.i_car_repository import ICarRepository
 from repositories.interfaces.i_invoice_repository import IInvoiceRepository
+from repositories.interfaces.i_otp_repository import IOtpRepository
 from repositories.interfaces.i_task_repository import ITaskRepository
 from repositories.interfaces.i_transfer_repository import ITransferRepository
 from repositories.invoice_repository import InvoiceRepository
+from repositories.otp_repository import OtpRepository
 from repositories.task_repository import TaskRepository
 from repositories.transfer_repository import TransferRepository
 from services.ai_proxy_service import AIProxyService
@@ -36,14 +38,20 @@ def get_car_repository(db: Session = Depends(get_db)) -> ICarRepository:
 def get_invoice_repository(db: Session = Depends(get_db)) -> IInvoiceRepository:
     return InvoiceRepository(db)
 
+def get_otp_repository(db: Session = Depends(get_db)) -> IOtpRepository:
+    return OtpRepository(db)
+
 def get_task_repository(db: Session = Depends(get_db)) -> ITaskRepository:
     return TaskRepository(db)
 
 def get_transfer_repository(db: Session = Depends(get_db)) -> ITransferRepository:
     return TransferRepository(db)
 
-def get_auth_service(repo: IAuthRepository = Depends(get_auth_repository)) -> IAuthService:
-    return AuthService(repo)
+def get_auth_service(
+        repo: IAuthRepository = Depends(get_auth_repository),
+        otp_repo: IOtpRepository = Depends(get_otp_repository)
+) -> IAuthService:
+    return AuthService(repo, otp_repo)
 
 def get_car_service(
         repo: ICarRepository = Depends(get_car_repository),

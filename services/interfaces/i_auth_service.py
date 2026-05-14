@@ -6,6 +6,9 @@ from schemas.user_schema import UserLogin, UserCreate, UserUpdate
 class IAuthService(ABC):
     @abstractmethod
     def login(self, data: UserLogin) -> AuthResponse: ...
+
+    @abstractmethod
+    def send_otp(self, email: str) -> MessageResponse: ...
     
     @abstractmethod
     def register(self, data: UserCreate) -> MessageResponse: ...
