@@ -2,12 +2,14 @@ import boto3
 import os
 from botocore.exceptions import ClientError
 
-ses_client = boto3.client('ses', region_name=os.getenv('S3_REGION'))
 SENDER = os.getenv('SES_SENDER_EMAIL')
+
+def _get_ses_client():
+    return boto3.client('ses', region_name=os.getenv('S3_REGION'))
 
 def send_otp_email(to_email: str, otp_code: str) -> bool:
     try:
-        ses_client.send_email(
+        _get_ses_client().send_email(
             Source=SENDER,
             Destination={"ToAddresses": [to_email]},
             Message={
