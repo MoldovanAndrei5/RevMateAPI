@@ -2,12 +2,9 @@ import os
 from datetime import datetime, timezone, timedelta
 import json
 from uuid import UUID
-
 from google import genai
 from google.genai import types
-
 from ai_schemas import TaskSuggestionResponse
-
 
 class AIService:
     MODEL_USED = "gemini-2.0-flash"
