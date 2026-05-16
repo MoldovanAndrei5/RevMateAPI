@@ -1,5 +1,5 @@
 import json
-from email_service.email_service import EmailService
+from email_service import EmailService
 
 service = EmailService()
 
