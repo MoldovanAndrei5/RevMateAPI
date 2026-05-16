@@ -5,13 +5,13 @@ from fastapi import HTTPException
 from schemas.task_schema import TaskSuggestionRequest, TaskSuggestionResponse
 from services.interfaces.i_ai_proxy_service import IAIProxyService
 
-AI_SERVICE_URL = os.getenv("AI_SERVICE_URL")
+PRIVATE_SERVICE_URL = os.getenv("PRIVATE_SERVICE_URL")
 
 class AIProxyService(IAIProxyService):
     def get_suggestions(self, body: TaskSuggestionRequest) -> list[TaskSuggestionResponse]:
         try:
             response = httpx.post(
-                f"{AI_SERVICE_URL}/ai/suggestions",
+                f"{PRIVATE_SERVICE_URL}/ai/suggestions",
                 json=body.model_dump(mode="json"),
                 timeout=25,
             )

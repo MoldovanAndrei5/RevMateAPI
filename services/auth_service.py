@@ -9,14 +9,14 @@ from schemas.auth_schema import AuthResponse
 from schemas.response_schema import MessageResponse
 from schemas.user_schema import UserCreate, UserLogin, UserUpdate
 from services.interfaces.i_auth_service import IAuthService
+from services.interfaces.i_email_proxy_service import IEmailProxyService
 from utils.auth import verify_password, create_access_token, hash_password
-from utils.email import send_otp_email
-
 
 class AuthService(IAuthService):
-    def __init__(self, repo: IAuthRepository, otp_repo: IOtpRepository):
+    def __init__(self, repo: IAuthRepository, otp_repo: IOtpRepository, email_proxy_service: IEmailProxyService):
         self.repo = repo
         self.otp_repo = otp_repo
+        self.email_proxy_service = email_proxy_service
 
     def login(self, data: UserLogin) -> AuthResponse:
         user = self.repo.get_by_email(data.email)
@@ -37,9 +37,7 @@ class AuthService(IAuthService):
             expires_at=expires_at
         )
         self.otp_repo.create_or_replace(otp)
-        success = send_otp_email(email, otp_code)
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to send verification email")
+        self.email_proxy_service.send_otp(email, otp_code)
         return MessageResponse(message="Verification email sent")
 
     def register(self, data: UserCreate) -> MessageResponse:

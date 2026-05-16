@@ -132,3 +132,39 @@ jobs:
             --zip-file fileb://ai_function.zip \
             --query 'FunctionArn' \
             --output text
+          
+  update-email-lambda:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Build and deploy Email Lambda
+        run: |
+          cd email_service
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp *.py package/
+          cd package && zip -r ../../email_function.zip .
+          cd ../..
+          
+          aws lambda wait function-updated \
+            --function-name emailService
+          
+          aws lambda update-function-code \
+            --function-name emailService \
+            --zip-file fileb://email_function.zip \
+            --query 'FunctionArn' \
+            --output text
