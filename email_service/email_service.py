@@ -6,11 +6,11 @@ class EmailService:
     SENDER = os.getenv('SES_SENDER_EMAIL')
     
     def __init__(self):
-        self._ses_client = boto3.client('ses', region_name=os.getenv('SES_REGION'))
+        self.ses_client = boto3.client('ses', region_name=os.getenv('SES_REGION'))
 
     def send_otp_email(self, to_email: str, otp_code: str) -> bool:
         try:
-            self._ses_client.send_email(
+            self.ses_client.send_email(
                 Source=self.SENDER,
                 Destination={"ToAddresses": [to_email]},
                 Message={
@@ -30,4 +30,5 @@ class EmailService:
             )
             return True
         except ClientError as e:
+            print(f"Failed to send email: {e}")
             return False
