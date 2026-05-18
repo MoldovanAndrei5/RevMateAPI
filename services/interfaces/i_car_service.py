@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 from schemas.car_schema import CarSchema, CarCreate, CarUpdate
-from schemas.response_schema import MessageResponse
+
 
 class ICarService(ABC):
     @abstractmethod
@@ -17,7 +17,7 @@ class ICarService(ABC):
     def update_car(self, car_uuid: UUID, user_id: int, data: CarUpdate) -> CarSchema: ...
     
     @abstractmethod
-    def delete_car(self, car_uuid: UUID, user_id: int) -> MessageResponse: ...
+    def delete_car(self, car_uuid: UUID, user_id: int) -> dict: ...
     
     @abstractmethod
     def generate_report(self, car_uuid: UUID, user_id: int) -> tuple[bytes, str]: ...

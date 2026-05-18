@@ -1,9 +1,9 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from database import get_db
-from repositories.auth_repository import AuthRepository
+from repositories.user_repository import UserRepository
 from repositories.car_repository import CarRepository
-from repositories.interfaces.i_auth_repository import IAuthRepository
+from repositories.interfaces.i_user_repository import IUserRepository
 from repositories.interfaces.i_car_repository import ICarRepository
 from repositories.interfaces.i_invoice_repository import IInvoiceRepository
 from repositories.interfaces.i_otp_repository import IOtpRepository
@@ -13,10 +13,12 @@ from repositories.invoice_repository import InvoiceRepository
 from repositories.otp_repository import OtpRepository
 from repositories.task_repository import TaskRepository
 from repositories.transfer_repository import TransferRepository
+from services.account_service import AccountService
 from services.ai_proxy_service import AIProxyService
 from services.auth_service import AuthService
 from services.car_service import CarService
 from services.email_proxy_service import EmailProxyService
+from services.interfaces.i_account_service import IAccountService
 from services.interfaces.i_ai_proxy_service import IAIProxyService
 from services.interfaces.i_auth_service import IAuthService
 from services.interfaces.i_car_service import ICarService
@@ -31,8 +33,8 @@ from services.transfer_service import TransferService
 from services.upload_service import UploadService
 
 
-def get_auth_repository(db: Session = Depends(get_db)) -> IAuthRepository:
-    return AuthRepository(db)
+def get_user_repository(db: Session = Depends(get_db)) -> IUserRepository:
+    return UserRepository(db)
 
 def get_car_repository(db: Session = Depends(get_db)) -> ICarRepository:
     return CarRepository(db)
@@ -56,7 +58,7 @@ def get_email_proxy_service() -> IEmailProxyService:
     return EmailProxyService()
 
 def get_auth_service(
-        repo: IAuthRepository = Depends(get_auth_repository),
+        repo: IUserRepository = Depends(get_user_repository),
         otp_repo: IOtpRepository = Depends(get_otp_repository),
         email_proxy_service: IEmailProxyService = Depends(get_email_proxy_service),
 ) -> IAuthService:
@@ -83,9 +85,18 @@ def get_task_service(
 def get_transfer_service(
         repo:ITransferRepository = Depends(get_transfer_repository),
         car_repo: ICarRepository = Depends(get_car_repository),
-        auth_repo: IAuthRepository = Depends(get_auth_repository)
+        user_repo: IUserRepository = Depends(get_user_repository)
 ) -> ITransferService:
-    return TransferService(repo, car_repo, auth_repo)
+    return TransferService(repo, car_repo, user_repo)
 
 def get_upload_service() -> IUploadService:
     return UploadService()
+
+def get_account_service(
+        repo: IUserRepository = Depends(get_user_repository),
+        car_repo: ICarRepository = Depends(get_car_repository),
+        task_repo: ITaskRepository = Depends(get_task_repository),
+        otp_repo: IOtpRepository = Depends(get_otp_repository),
+        email_proxy_service: IEmailProxyService = Depends(get_email_proxy_service)
+) -> IAccountService:
+    return AccountService(repo, car_repo, task_repo, otp_repo, email_proxy_service)

@@ -4,9 +4,9 @@ from models.invoice import Invoice
 from repositories.interfaces.i_invoice_repository import IInvoiceRepository
 from repositories.interfaces.i_task_repository import ITaskRepository
 from schemas.invoice_schema import InvoiceCreate, InvoiceResponse, InvoiceDownloadResponse
-from schemas.response_schema import MessageResponse
 from services.interfaces.i_invoice_service import IInvoiceService
 from utils.s3 import generate_presigned_download_url, delete_file
+
 
 class InvoiceService(IInvoiceService):
     def __init__(self, repo: IInvoiceRepository, task_repo: ITaskRepository):
@@ -44,11 +44,11 @@ class InvoiceService(IInvoiceService):
         invoice = self._validate_owner(invoice_uuid, user_id)
         return InvoiceDownloadResponse(download_url=generate_presigned_download_url(invoice.file_key))
 
-    def delete_invoice(self, invoice_uuid: UUID, user_id: int) -> MessageResponse:
+    def delete_invoice(self, invoice_uuid: UUID, user_id: int) -> dict:
         invoice = self._validate_owner(invoice_uuid, user_id)
         try:
             delete_file(invoice.file_key)
         except Exception:
             raise HTTPException(status_code=500, detail="Failed to delete file from storage")
         self.repo.delete(invoice)
-        return MessageResponse(message=f"Invoice {invoice_uuid} deleted successfully")
+        return {"message": f"Invoice {invoice_uuid} deleted successfully"}

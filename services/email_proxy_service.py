@@ -4,6 +4,7 @@ import httpx
 from fastapi import HTTPException
 from services.interfaces.i_email_proxy_service import IEmailProxyService
 
+
 PRIVATE_SERVICE_URL = os.getenv("PRIVATE_SERVICE_URL")
 
 class EmailProxyService(IEmailProxyService):

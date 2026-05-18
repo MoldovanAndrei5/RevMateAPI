@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from models.otp_code import OtpCode
 from repositories.interfaces.i_otp_repository import IOtpRepository
 
+
 class OtpRepository(IOtpRepository):
     def __init__(self, db: Session):
         self.db = db

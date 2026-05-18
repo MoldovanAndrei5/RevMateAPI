@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from models.user import User
-from repositories.interfaces.i_auth_repository import IAuthRepository
+from repositories.interfaces.i_user_repository import IUserRepository
 
-class AuthRepository(IAuthRepository):
+
+class UserRepository(IUserRepository):
     def __init__(self, db: Session):
         self.db = db
 
@@ -26,3 +27,7 @@ class AuthRepository(IAuthRepository):
         self.db.commit()
         self.db.refresh(user)
         return user
+    
+    def delete(self, user_id: int) -> None:
+        self.db.delete(user_id)
+        self.db.commit()

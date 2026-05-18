@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from schemas.task_schema import TaskSuggestionRequest, TaskSuggestionResponse
 from services.interfaces.i_ai_proxy_service import IAIProxyService
 
+
 PRIVATE_SERVICE_URL = os.getenv("PRIVATE_SERVICE_URL")
 
 class AIProxyService(IAIProxyService):
@@ -26,7 +27,7 @@ class AIProxyService(IAIProxyService):
                 detail = inner_body.get("detail", "AI service error") if isinstance(inner_body, dict) else "AI service error"
                 raise HTTPException(status_code=inner_status, detail=detail)
 
-            return inner_body
+            return [TaskSuggestionResponse(**item) for item in inner_body]
 
         except HTTPException:
             raise

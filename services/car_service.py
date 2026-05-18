@@ -4,10 +4,10 @@ from models.car import Car
 from repositories.interfaces.i_car_repository import ICarRepository
 from repositories.interfaces.i_task_repository import ITaskRepository
 from schemas.car_schema import CarCreate, CarUpdate, CarSchema
-from schemas.response_schema import MessageResponse
 from services.interfaces.i_car_service import ICarService
 from utils.pdf_generator import generate_car_report
 from utils.s3 import generate_presigned_download_url, delete_file
+
 
 class CarService(ICarService):
     def __init__(self, repo: ICarRepository, task_repo: ITaskRepository):
@@ -51,7 +51,7 @@ class CarService(ICarService):
         updated = self.repo.update(car_uuid, data.model_dump(exclude_none=True))
         return self._to_schema(updated)
 
-    def delete_car(self, car_uuid: UUID, user_id: int) -> MessageResponse:
+    def delete_car(self, car_uuid: UUID, user_id: int) -> dict:
         car = self._validate_owner(car_uuid, user_id)
         tasks = self.task_repo.get_by_car_with_invoices(car_uuid)
         for task in tasks:
@@ -66,7 +66,7 @@ class CarService(ICarService):
             except Exception:
                 raise HTTPException(status_code=500, detail="Failed to delete file from storage")
         self.repo.delete(car)
-        return MessageResponse(message=f"Car {car_uuid} deleted successfully")
+        return {"message": f"Car {car_uuid} deleted successfully"}
 
     def generate_report(self, car_uuid: UUID, user_id: int) -> tuple[bytes, str]:
         car = self._validate_owner(car_uuid, user_id)

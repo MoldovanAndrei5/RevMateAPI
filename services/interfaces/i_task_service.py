@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from schemas.response_schema import MessageResponse
 from schemas.task_schema import TaskSchema, TaskUpdate, TaskCreate
+
 
 class ITaskService(ABC):
     @abstractmethod
@@ -20,4 +20,4 @@ class ITaskService(ABC):
     def update_task(self, task_uuid: UUID, user_id: int, data: TaskUpdate) -> TaskSchema: ...
     
     @abstractmethod
-    def delete_task(self, task_uuid: UUID, user_id: int) -> MessageResponse: ...
+    def delete_task(self, task_uuid: UUID, user_id: int) -> dict: ...

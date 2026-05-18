@@ -1,46 +1,38 @@
-import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi import HTTPException
-from models.otp_code import OtpCode
 from models.user import User
-from repositories.interfaces.i_auth_repository import IAuthRepository
+from repositories.interfaces.i_user_repository import IUserRepository
 from repositories.interfaces.i_otp_repository import IOtpRepository
-from schemas.auth_schema import AuthResponse
-from schemas.response_schema import MessageResponse
-from schemas.user_schema import UserCreate, UserLogin, UserUpdate
+from schemas.user_schema import UserCreate, UserLogin
 from services.interfaces.i_auth_service import IAuthService
 from services.interfaces.i_email_proxy_service import IEmailProxyService
 from utils.auth import verify_password, create_access_token, hash_password
+from utils.otp import generate_otp
+
 
 class AuthService(IAuthService):
-    def __init__(self, repo: IAuthRepository, otp_repo: IOtpRepository, email_proxy_service: IEmailProxyService):
+    def __init__(self, repo: IUserRepository, otp_repo: IOtpRepository, email_proxy_service: IEmailProxyService):
         self.repo = repo
         self.otp_repo = otp_repo
         self.email_proxy_service = email_proxy_service
 
-    def login(self, data: UserLogin) -> AuthResponse:
+    def login(self, data: UserLogin) -> dict:
         user = self.repo.get_by_email(data.email)
         if not user or not verify_password(data.password, user.hashed_password):
             raise HTTPException(status_code=401, detail="Incorrect email or password")
         token = create_access_token({"user_id": user.user_id})
-        return AuthResponse(access_token=token, user_id=user.user_id)
+        return {"access_token": token, "user_id": user.user_id}
     
-    def send_otp(self, email: str) -> MessageResponse:
+    def send_otp(self, email: str) -> dict:
         existing = self.repo.get_by_email(email)
         if existing:
             raise HTTPException(status_code=400, detail="User with this email already exists")
-        otp_code = str(secrets.randbelow(900000) + 100000)
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
-        otp = OtpCode(
-            email=email,
-            otp_code=otp_code,
-            expires_at=expires_at
-        )
+        otp = generate_otp(email)
         self.otp_repo.create_or_replace(otp)
-        self.email_proxy_service.send_otp(email, otp_code)
-        return MessageResponse(message="Verification email sent")
+        self.email_proxy_service.send_otp(email, otp.otp_code)
+        return {"message": "Verification code sent"}
 
-    def register(self, data: UserCreate) -> MessageResponse:
+    def register(self, data: UserCreate) -> dict:
         otp = self.otp_repo.get_by_email(data.email)
         if not otp:
             raise HTTPException(status_code=404, detail="No verification code found for this email")
@@ -58,11 +50,4 @@ class AuthService(IAuthService):
         )
         self.repo.create(new_user)
         self.otp_repo.delete(otp)
-        return MessageResponse(message="User created successfully")
-
-    def reset_password(self, user_id: int, data: UserUpdate) -> MessageResponse:
-        user = self.repo.get_by_id(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        self.repo.update_password(user_id, hash_password(data.password))
-        return MessageResponse(message="Password updated successfully")
+        return {"message": "User created successfully"}

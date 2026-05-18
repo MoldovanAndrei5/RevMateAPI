@@ -1,8 +1,9 @@
 import os
 from fastapi import HTTPException
-from schemas.upload_schema import PresignedUrlRequest, PresignedUrlResponse
+from schemas.upload_schema import PresignedUrlRequest
 from services.interfaces.i_upload_service import IUploadService
 from utils.s3 import generate_presigned_upload_url
+
 
 ALLOWED_TYPES = {
     "image/jpeg",
@@ -15,7 +16,7 @@ MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE_MB", "10")) * 1024 * 1024
 ALLOWED_FOLDERS = {"invoices", "cars"}
 
 class UploadService(IUploadService):        
-    def get_presigned_url(self, body: PresignedUrlRequest) -> PresignedUrlResponse:
+    def get_presigned_url(self, body: PresignedUrlRequest) -> dict:
         if body.file_type not in ALLOWED_TYPES:
             raise HTTPException(status_code=400, detail=f"File type {body.file_type} not allowed")
         if body.file_size > MAX_FILE_SIZE:
@@ -27,7 +28,7 @@ class UploadService(IUploadService):
             file_name=body.file_name,
             content_type=body.file_type
         )
-        return PresignedUrlResponse(
-            upload_url=result["upload_url"],
-            file_key=result["file_key"]
-        )
+        return {
+            "upload_url": result["upload_url"],
+            "file_key": result["file_key"]
+        }

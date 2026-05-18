@@ -7,7 +7,7 @@ from schemas.response_schema import MessageResponse
 from services.interfaces.i_car_service import ICarService
 from utils.auth import get_current_user
 
-router = APIRouter(tags=["Cars"])
+router = APIRouter(tags=["Cars"], dependencies=[Depends(get_current_user)])
 
 @router.get("/", response_model=list[CarSchema])
 def get_user_cars(user_id: int = Depends(get_current_user), car_service: ICarService = Depends(get_car_service)):
