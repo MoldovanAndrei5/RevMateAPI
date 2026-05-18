@@ -28,6 +28,6 @@ class UserRepository(IUserRepository):
         self.db.refresh(user)
         return user
     
-    def delete(self, user_id: int) -> None:
-        self.db.delete(user_id)
+    def delete(self, user: User) -> None:
+        self.db.delete(user)
         self.db.commit()

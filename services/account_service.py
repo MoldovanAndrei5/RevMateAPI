@@ -122,5 +122,5 @@ class AccountService(IAccountService):
                         delete_file(invoice.file_key)
                     except Exception:
                         raise HTTPException(status_code=500, detail="Failed to delete file from storage")
-        self.repo.delete(user_id)
+        self.repo.delete(user)
         return {"message": "Account deleted successfully"}
