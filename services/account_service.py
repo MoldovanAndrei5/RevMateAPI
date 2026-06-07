@@ -11,7 +11,10 @@ from services.interfaces.i_email_proxy_service import IEmailProxyService
 from utils.auth import hash_password
 from utils.otp import generate_otp
 from utils.s3 import delete_file
+from utils.logger import get_logger
 
+
+logger = get_logger(__name__)
 
 class AccountService(IAccountService):
     def __init__(self, repo: IUserRepository, car_repo: ICarRepository, task_repo: ITaskRepository, otp_repo: IOtpRepository, email_proxy_service: IEmailProxyService):
@@ -22,6 +25,7 @@ class AccountService(IAccountService):
         self.email_proxy_service = email_proxy_service
 
     def get_account_stats(self, user_id: int) -> StatsResponse:
+        logger.info(f"Getting account stats for user {user_id}")
         tasks = self.task_repo.get_all_by_user(user_id)
         now = datetime.now(timezone.utc)
 
@@ -59,17 +63,9 @@ class AccountService(IAccountService):
             else:
                 pending += 1
 
-        # Sort months chronologically
-        sorted_months = sorted(
-            monthly.items(),
-            key=lambda x: datetime.strptime(x[0], "%b %Y")
-        )
-
-        tasks_by_month = [
-            MonthlyStats(month=k, completed=v["completed"], scheduled=v["scheduled"])
-            for k, v in sorted_months
-        ]
-
+        sorted_months = sorted(monthly.items(), key=lambda x: datetime.strptime(x[0], "%b %Y"))
+        tasks_by_month = [MonthlyStats(month=k, completed=v["completed"], scheduled=v["scheduled"]) for k, v in sorted_months]
+        logger.info(f"Successfully generated stats for user {user_id}")
         return StatsResponse(
             total_spent=round(total_spent, 2),
             total_tasks=len(tasks),
@@ -81,46 +77,58 @@ class AccountService(IAccountService):
         )
         
     def reset_password(self, user_id: int, data: UserUpdate) -> dict:
+        logger.info(f"Resetting password for user {user_id}")
         user = self.repo.get_by_id(user_id)
         if not user:
+            logger.warning(f"User {user_id} not found")
             raise HTTPException(status_code=404, detail="User not found")
         self.repo.update_password(user_id, hash_password(data.password))
+        logger.info(f"Password updated for user {user_id}")
         return {"message": "Password updated successfully"}
     
     def send_delete_otp(self, user_id: int) -> dict:
+        logger.info(f"Sending delete OTP for user {user_id}")
         user = self.repo.get_by_id(user_id)
         if not user:
+            logger.warning(f"User {user_id} not found")
             raise HTTPException(status_code=404, detail="User not found")
         otp = generate_otp(user.email)
         self.otp_repo.create_or_replace(otp)
         self.email_proxy_service.send_otp(user.email, otp.otp_code)
+        logger.info(f"OTP sent for user {user_id}")
         return {"message": "Verification code sent"}
     
     def delete_account(self, user_id: int, otp_code: str) -> dict:
+        logger.info(f"Deleting account for user {user_id}")
         user = self.repo.get_by_id(user_id)
         if not user:
+            logger.warning(f"User {user_id} not found")
             raise HTTPException(status_code=404, detail="User not found")
         otp = self.otp_repo.get_by_email(user.email)
         if not otp:
+            logger.warning(f"No verification code found for {user.email}")
             raise HTTPException(status_code=404, detail="No verification code found for this email")
         if datetime.now(timezone.utc) > otp.expires_at:
+            logger.warning(f"OTP expired for {user.email}")
             self.otp_repo.delete(otp)
             raise HTTPException(status_code=400, detail="Verification code expired")
         if otp.otp_code != otp_code:
-            raise HTTPException(status_code=401, detail="Incorrect otp code")
+            logger.warning(f"OTP code mismatch for {user.email}")
+            raise HTTPException(status_code=401, detail="Incorrect OTP code")
         cars = self.car_repo.get_all_by_user(user_id)
         for car in cars:
             if car.image_key is not None:
                 try:
                     delete_file(car.image_key)
-                except Exception:
-                    raise HTTPException(status_code=500, detail="Failed to delete file from storage")
+                except Exception as e:
+                    logger.error(f"Failed to delete file {car.image_key}: {e}")
             tasks = self.task_repo.get_by_car_with_invoices(car.car_uuid)
             for task in tasks:
                 for invoice in task.invoices:
                     try:
                         delete_file(invoice.file_key)
-                    except Exception:
-                        raise HTTPException(status_code=500, detail="Failed to delete file from storage")
+                    except Exception as e:
+                        logger.error(f"Failed to delete file {invoice.file_key}: {e}")
         self.repo.delete(user)
+        logger.info(f"Deleted account for user {user_id}")
         return {"message": "Account deleted successfully"}

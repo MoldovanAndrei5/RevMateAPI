@@ -5,6 +5,10 @@ from uuid import UUID
 from google import genai
 from google.genai import types
 from ai_schemas import TaskSuggestionResponse
+from logger import get_logger
+
+
+logger = get_logger(__name__)
 
 class AIService:
     MODEL_USED = "gemini-2.0-flash"
@@ -61,6 +65,7 @@ class AIService:
         """
 
     def _parse_and_validate(self, response_text: str, car_uuid: UUID) -> list[TaskSuggestionResponse]:
+        logger.info("Validating generated tasks")
         text = response_text.strip()
         if text.startswith("```"):
             lines = text.split("\n")
@@ -70,9 +75,11 @@ class AIService:
         try:
             data = json.loads(text)
         except json.JSONDecodeError as e:
-            raise ValueError(f"AI returned invalid JSON: {e}")  # ✅ no FastAPI
+            logger.warning(f"Failed to parse JSON: {e}")
+            raise ValueError(f"AI returned invalid JSON: {e}")
 
         if not isinstance(data, list):
+            logger.warning("Response is not a list")
             raise ValueError("Response is not a JSON array")
 
         tasks = []
@@ -80,14 +87,17 @@ class AIService:
 
         for i, item in enumerate(data):
             if not isinstance(item, dict):
+                logger.warning(f"Item {i} is not an object")
                 raise ValueError(f"Item {i} is not an object")
 
             title = item.get("title")
             category = item.get("category")
 
             if not title or not isinstance(title, str) or not title.strip():
+                logger.warning(f"Item {i} missing or invalid title")
                 raise ValueError(f"Item {i} missing or invalid title")
             if not category or not isinstance(category, str) or not category.strip():
+                logger.warning(f"Item {i} missing or invalid category")
                 raise ValueError(f"Item {i} missing or invalid category")
 
             offset_days = item.get("scheduled_date_offset_days", 30)
@@ -117,29 +127,30 @@ class AIService:
                 scheduled_date=scheduled_ms,
                 notes=notes,
             ))
-
+        logger.info("Tasks validated successfully")
         return tasks
 
     def get_task_suggestions(self, request_data: dict) -> list[TaskSuggestionResponse]:
+        logger.info(f"Getting task suggestions for car {request_data["car_uuid"]}")
         prompt = self._build_prompt(request_data)
         last_error = None
         for attempt in range(1, self.MAX_RETRIES + 1):
             try:
-                print(f"[AI] Attempt {attempt}/{self.MAX_RETRIES}")
+                logger.info(f"Attempt {attempt}/{self.MAX_RETRIES}")
                 raw = self._generate_tasks(prompt)
                 tasks = self._parse_and_validate(raw, UUID(request_data["car_uuid"]))
-                print(f"[AI] Successfully generated {len(tasks)} tasks")
+                logger.info(f"Successfully generated {len(tasks)} tasks")
                 return tasks
             except Exception as e:
                 last_error = e
-                print(f"[AI] Attempt {attempt} failed: {e}")
+                logger.warning(f"Attempt {attempt} failed: {e}")
                 if attempt < self.MAX_RETRIES:
                     prompt += f"\n\nPrevious attempt failed with error: {e}. Please fix and try again."
-
-        raise ValueError(
-            f"Failed to generate valid tasks after {self.MAX_RETRIES} attempts. Last error: {last_error}")  # ✅ no FastAPI
+        logger.error(f"All {self.MAX_RETRIES} attempts failed. Last error: {last_error}")
+        raise ValueError(f"Failed to generate valid tasks after {self.MAX_RETRIES} attempts. Last error: {last_error}")
 
     def _generate_tasks(self, prompt: str) -> str:
+        logger.info("Calling Gemini API")
         response = self.client.models.generate_content(
             model=self.MODEL_USED,
             config=types.GenerateContentConfig(
@@ -148,4 +159,5 @@ class AIService:
             ),
             contents=prompt,
         )
+        logger.info("Gemini API responded successfully")
         return response.text
