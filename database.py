@@ -2,7 +2,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import create_engine
 import os
 from dotenv import load_dotenv
+from utils.logger import get_logger
 
+
+logger = get_logger(__name__)
 load_dotenv()
 
 DB_HOST = os.getenv("DB_HOST")
@@ -15,8 +18,7 @@ SQLALCHEMY_DATABASE_URL = (
     f"postgresql+psycopg2://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-print(f"[DB CONFIG] Host: {DB_HOST}, Port: {DB_PORT}, DB: {DB_NAME}, User: {DB_USERNAME}")
-print(f"[DB URL] {SQLALCHEMY_DATABASE_URL}")
+logger.info(f"[DB CONFIG] Host: {DB_HOST}, Port: {DB_PORT}, DB: {DB_NAME}, User: {DB_USERNAME}")
 
 try:
     engine = create_engine(
@@ -25,27 +27,23 @@ try:
         pool_size=1,
         max_overflow=0
     )
-    print("[DB ENGINE] Engine created successfully")
+    logger.info("DB engine created successfully")
 except Exception as e:
-    print(f"[DB ENGINE ERROR] Failed to create engine: {e}")
+    logger.error(f"Failed to create DB engine: {e}")
     raise
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-print("[SESSION] SessionLocal configured")
-
 Base = declarative_base()
-print("[BASE] Declarative base initialized")
-
 
 def get_db():
-    print("[DB SESSION] Opening new database session")
+    logger.info("Opening DB session")
     db = SessionLocal()
     try:
         yield db
-        print("[DB SESSION] Session used successfully")
+        logger.info("DB session used successfully")
     except Exception as e:
-        print(f"[DB SESSION ERROR] {e}")
+        logger.error(f"DB session error: {e}")
         raise
     finally:
         db.close()
-        print("[DB SESSION] Session closed")
+        logger.info("DB session closed")

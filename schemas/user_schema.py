@@ -25,3 +25,9 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     password: str
     
+class UserResetPassword(BaseModel):
+    email: EmailStr
+    otp_code: str
+    new_password: str
+
+    
