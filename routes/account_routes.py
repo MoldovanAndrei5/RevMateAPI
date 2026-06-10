@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from dependencies.di import get_account_service
 from schemas.response_schema import MessageResponse
 from schemas.stats_schema import StatsResponse
-from schemas.user_schema import UserUpdate
+from schemas.user_schema import UserUpdate, DeleteAccount
 from services.interfaces.i_account_service import IAccountService
 from utils.auth import get_current_user
 
@@ -22,5 +22,5 @@ def send_delete_otp(user_id: int = Depends(get_current_user), account_service: I
     return account_service.send_delete_otp(user_id)
 
 @router.delete("/delete-account", response_model=MessageResponse)
-def delete_account(otp_code: str, user_id: int = Depends(get_current_user), account_service: IAccountService = Depends(get_account_service)):
-    return account_service.delete_account(user_id, otp_code)
+def delete_account(body: DeleteAccount, user_id: int = Depends(get_current_user), account_service: IAccountService = Depends(get_account_service)):
+    return account_service.delete_account(user_id, body.otp_code)

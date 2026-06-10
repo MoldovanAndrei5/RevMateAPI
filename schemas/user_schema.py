@@ -29,5 +29,7 @@ class UserResetPassword(BaseModel):
     email: EmailStr
     otp_code: str
     new_password: str
-
+    
+class DeleteAccount(BaseModel):
+    otp_code: str
     
