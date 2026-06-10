@@ -11,7 +11,7 @@ from logger import get_logger
 logger = get_logger(__name__)
 
 class AIService:
-    MODEL_USED = "gemini-2.0-flash"
+    MODEL_USED = "gemini-2.5-flash"
     MAX_RETRIES = 3
     GET_TASK_SUGGESTIONS_SYSTEM_INSTRUCTIONS = """
         You are an expert automotive technician. Your job is to suggest upcoming maintenance tasks for a car based on its details.
