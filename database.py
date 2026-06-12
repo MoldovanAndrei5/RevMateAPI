@@ -6,7 +6,7 @@ from utils.logger import get_logger
 
 
 logger = get_logger(__name__)
-load_dotenv()
+load_dotenv(override=False)
 
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "5432")

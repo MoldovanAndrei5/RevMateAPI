@@ -38,7 +38,7 @@ class TransferService(ITransferService):
             raise HTTPException(status_code=403, detail="Transfer does not belong to user")
         return transfer
 
-    def initiate_transfer(self, body: CarTransferInitiate, user_id: int) -> CarTransferOutgoingResponse:
+    def initiate_transfer(self, user_id: int, body: CarTransferInitiate) -> CarTransferOutgoingResponse:
         logger.info(f"Initiating transfer for car {body.car_uuid} by user {user_id}")
         car = self.car_repo.get_by_uuid(body.car_uuid)
         if not car:

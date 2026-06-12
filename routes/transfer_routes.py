@@ -10,7 +10,7 @@ router = APIRouter(tags=["Transfers"], dependencies=[Depends(get_current_user)])
 
 @router.post("/initiate", response_model=CarTransferOutgoingResponse)
 def initiate_transfer(body: CarTransferInitiate, user_id: int = Depends(get_current_user), transfer_service: ITransferService = Depends(get_transfer_service)):
-    return transfer_service.initiate_transfer(body, user_id)
+    return transfer_service.initiate_transfer(user_id, body)
 
 @router.get("/incoming", response_model=list[CarTransferIncomingResponse])
 def get_incoming_transfers(user_id: int = Depends(get_current_user), transfer_service: ITransferService = Depends(get_transfer_service)):

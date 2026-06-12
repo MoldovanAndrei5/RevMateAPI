@@ -9,7 +9,6 @@ class InvoiceCreate(BaseModel):
     file_type: str
     file_size: int
 
-
 class InvoiceResponse(BaseModel):
     invoice_uuid: UUID
     task_uuid: UUID
