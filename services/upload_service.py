@@ -18,7 +18,7 @@ ALLOWED_FOLDERS = {"invoices", "cars"}
 
 class UploadService(IUploadService):        
     def get_presigned_url(self, body: PresignedUrlRequest) -> dict:
-        logger.info(f"Generating presigned url for {body.filename} in {body.folder}")
+        logger.info(f"Generating presigned url for {body.file_name} in {body.folder}")
         if body.file_type not in ALLOWED_TYPES:
             logger.warning(f"Unsupported file type: {body.file_type}")
             raise HTTPException(status_code=400, detail=f"File type {body.file_type} not allowed")
